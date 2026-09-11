@@ -3,8 +3,10 @@
   <!-- Left side — branding -->
   <div class="login-left">
     <div class="brand">
-      <div class="brand-icon">🕌</div>
-      <h1>تهبير أكاديمي</h1>
+      <div class="brand-icon">
+        <img src="assets/images/logo.jpg" alt="تحبير أكاديمي">
+        </div>
+        <h1>تحبير أكاديمي</h1>
       <p>منصة تحفيظ القرآن الكريم</p>
     </div>
     <div class="brand-features">
@@ -33,9 +35,13 @@
 
       <!-- Header -->
       <div class="card-header">
-        <div class="card-logo">🕌</div>
+        <div class="brand">
+          <div class="brand-icon">
+            <img src="assets/images/logo.jpg" alt="تحبير أكاديمي">
+          </div>
+        </div>
         <h2>تسجيل الدخول</h2>
-        <p>أهلاً بك في تهبير أكاديمي</p>
+        <p>أهلاً بك في تحبير أكاديمي</p>
       </div>
 
       <!-- Error -->
@@ -56,7 +62,7 @@
               type="email"
               [ngModel]="email()"
               (ngModelChange)="email.set($event)"
-              placeholder="example@tahbeer.ma"
+              placeholder="example@tahbeer-edu.ma"
               [disabled]="loading()"
             />
           </div>
@@ -99,12 +105,6 @@
             دخول ←
           }
         </button>
-
-        <div class="switch-link">
-          ليس لديك حساب؟
-          <a routerLink="/register">سجّل الآن</a>
-        </div>
-
       </div>
     </div>
   </div>

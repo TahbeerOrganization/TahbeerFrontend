@@ -2,61 +2,100 @@ import { Injectable, signal } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Router } from '@angular/router';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
+
   currentUser = signal<any>(null);
 
   constructor(private sb: SupabaseService, private router: Router) {
-    this.sb.client.auth.onAuthStateChange((event, session)=>{
-      if(session?.user){
-        this.loadProfile(session.user.id);
+    // Écoute les changements de session (refresh page, logout...)
+    this.sb.client.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await this.loadProfile(session.user.id);
       } else {
         this.currentUser.set(null);
       }
     });
-   }
+  }
 
-    async login(email: string, password: string) {
+  // ── Login ──────────────────────────────────────
+  async login(email: string, password: string) {
     const { data, error } = await this.sb.client.auth
       .signInWithPassword({ email, password });
+
     if (error) throw error;
+
+    if (data.user) {
+      // Charger le profil
+      await this.loadProfile(data.user.id);
+      // Rediriger selon le rôle
+      this.redirectByRole();
+    }
+
     return data;
   }
 
-   async register(email: string, password: string, profile: any) {
+  // ── Register ───────────────────────────────────
+  async register(email: string, password: string, profile: any) {
     const { data, error } = await this.sb.client.auth
       .signUp({ email, password });
+
     if (error) throw error;
 
-    // إضافة بيانات الملف الشخصي
     if (data.user) {
       await this.sb.client.from('profiles').insert({
         id: data.user.id,
         ...profile
       });
+      await this.loadProfile(data.user.id);
+      this.redirectByRole();
     }
+
     return data;
   }
 
-  // تسجيل الخروج
+  // ── Logout ─────────────────────────────────────
   async logout() {
     await this.sb.client.auth.signOut();
+    this.currentUser.set(null);
     this.router.navigate(['/login']);
   }
 
-  // جلب الملف الشخصي
+  // ── Charger le profil depuis Supabase ──────────
   async loadProfile(userId: string) {
-    const { data } = await this.sb.client
+    const { data, error } = await this.sb.client
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
+
+    if (error) {
+      console.error('❌ PROFILE ERROR:', error.message);
+      return;
+    }
+
+    console.log('✅ PROFILE LOADED:', data);
     this.currentUser.set(data);
   }
 
-  get role() {
-    return this.currentUser()?.role;
+  // ── Redirection selon le rôle ──────────────────
+  private redirectByRole() {
+    const role = this.currentUser()?.role;
+    console.log('ROLE:', role);
+
+    if (role === 'prof') {
+      this.router.navigate(['/prof/dashboard']);
+    } else if (role === 'etudiant') {
+      this.router.navigate(['/etudiant/dashboard']);
+    } else {
+      // Rôle inconnu — rester sur login
+      console.warn('Rôle inconnu:', role);
+    }
   }
+
+  // ── Getters utiles ─────────────────────────────
+  get role() { return this.currentUser()?.role; }
+  isLoggedIn() { return !!this.currentUser(); }
+  isProf() { return this.currentUser()?.role === 'prof'; }
+  isEtudiant() { return this.currentUser()?.role === 'etudiant'; }
 }

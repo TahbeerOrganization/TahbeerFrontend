@@ -29,31 +29,23 @@ export class LoginComponent {
 
   // ── Méthode de connexion ───────────────────────
   async onLogin() {
-   // Validation basique avant d'appeler Supabase
-    if (!this.email() || !this.password()) {
-      this.error.set('يرجى ملء جميع الحقول');
-      return; // on arrête ici si champs vides
-    }
-
-    // On démarre le chargement
-    this.loading.set(true);
-    this.error.set(''); // reset l'erreur précédente
-
-    try {
-      // Appel à Supabase via AuthService
-      // Si succès → AuthService redirige automatiquement selon le rôle
-      await this.auth.login(this.email(), this.password());
-
-    } catch (err: any) {
-      // Si Supabase retourne une erreur (mauvais mot de passe, etc.)
-      this.error.set('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-
-    } finally {
-      // Dans tous les cas (succès ou erreur) → on arrête le spinner
-      this.loading.set(false);
-    }
+  if (!this.email() || !this.password()) {
+    this.error.set('يرجى ملء جميع الحقول');
+    return;
   }
 
+  this.loading.set(true);
+  this.error.set('');
+
+  try {
+    await this.auth.login(this.email(), this.password());
+    // ✅ Pas besoin de navigate ici — AuthService redirige automatiquement
+  } catch (err: any) {
+    this.error.set('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+  } finally {
+    this.loading.set(false);
+  }
+}
   // ── Toggle affichage mot de passe ─────────────
   togglePassword() {
     // update() = inverse la valeur actuelle du signal
