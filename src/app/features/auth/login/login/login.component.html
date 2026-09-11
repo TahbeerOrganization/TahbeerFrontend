@@ -1,1 +1,112 @@
-<p>login works!</p>
+<div class="login-page">
+
+  <!-- Left side — branding -->
+  <div class="login-left">
+    <div class="brand">
+      <div class="brand-icon">🕌</div>
+      <h1>تهبير أكاديمي</h1>
+      <p>منصة تحفيظ القرآن الكريم</p>
+    </div>
+    <div class="brand-features">
+      <div class="feature-item">
+        <span class="feature-icon">📖</span>
+        <span>تتبع السور والحفظ</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">✅</span>
+        <span>إدارة الحضور والغياب</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">📝</span>
+        <span>الواجبات والتقييمات</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">📊</span>
+        <span>تقارير ورسوم بيانية</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right side — form -->
+  <div class="login-right">
+    <div class="login-card">
+
+      <!-- Header -->
+      <div class="card-header">
+        <div class="card-logo">🕌</div>
+        <h2>تسجيل الدخول</h2>
+        <p>أهلاً بك في تهبير أكاديمي</p>
+      </div>
+
+      <!-- Error -->
+      @if (error()) {
+        <div class="alert alert-error">
+          ⚠️ {{ error() }}
+        </div>
+      }
+
+      <!-- Form -->
+      <div class="form">
+
+        <div class="form-group">
+          <label>البريد الإلكتروني</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉️</span>
+            <input
+              type="email"
+              [ngModel]="email()"
+              (ngModelChange)="email.set($event)"
+              placeholder="example@tahbeer.ma"
+              [disabled]="loading()"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>كلمة المرور</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input
+              [type]="showPassword() ? 'text' : 'password'"
+              [ngModel]="password()"
+              (ngModelChange)="password.set($event)"
+              placeholder="••••••••"
+              [disabled]="loading()"
+            />
+            <button
+              type="button"
+              class="toggle-pw"
+              (click)="togglePassword()"
+            >
+              {{ showPassword() ? '🙈' : '👁️' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <a routerLink="/register" class="forgot">نسيت كلمة المرور؟</a>
+        </div>
+
+        <button
+          class="btn-submit"
+          (click)="onLogin()"
+          [disabled]="loading()"
+        >
+          @if (loading()) {
+            <span class="spinner"></span>
+            جاري التحقق...
+          } @else {
+            دخول ←
+          }
+        </button>
+
+        <div class="switch-link">
+          ليس لديك حساب؟
+          <a routerLink="/register">سجّل الآن</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
