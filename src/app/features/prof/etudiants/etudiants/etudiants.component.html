@@ -1,1 +1,346 @@
-<p>etudiants works!</p>
+<div class="layout" dir="rtl">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="assets/images/logo.jpg" alt="تحبير" class="logo-img" />
+      <div>
+        <div class="logo-title">تحبير أكاديمي</div>
+        <div class="logo-sub">أكاديمية القرآن الكريم</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">الرئيسية</div>
+      <a class="nav-item" routerLink="/prof/dashboard">
+        <span class="nav-icon">📊</span> لوحة التحكم
+      </a>
+      <a class="nav-item active" routerLink="/prof/etudiants">
+        <span class="nav-icon">👥</span> الطلاب
+      </a>
+      <a class="nav-item" routerLink="/prof/presences">
+        <span class="nav-icon">✅</span> الحضور
+      </a>
+      <a class="nav-item" routerLink="/prof/sourates">
+        <span class="nav-icon">📖</span> السور
+      </a>
+      <div class="nav-label">التعليم</div>
+      <a class="nav-item" routerLink="/prof/devoirs">
+        <span class="nav-icon">📝</span> الواجبات
+      </a>
+      <a class="nav-item" routerLink="/prof/evaluations">
+        <span class="nav-icon">⭐</span> التقييمات
+      </a>
+      <a class="nav-item" routerLink="/prof/rapports">
+        <span class="nav-icon">📈</span> التقارير
+      </a>
+      <div class="nav-label">الإدارة</div>
+      <a class="nav-item" routerLink="/prof/groupes">
+        <span class="nav-icon">🗂️</span> المجموعات
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">
+          {{ auth.currentUser()?.nom?.charAt(0) }}
+        </div>
+        <div>
+          <div class="user-name">{{ auth.currentUser()?.nom }}</div>
+          <div class="user-role">معلم</div>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="auth.logout()">
+        🚪 خروج
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">👥 إدارة الطلاب</div>
+        <div class="topbar-sub">
+          {{ etudiantsFiltres().length }} طالب
+        </div>
+      </div>
+      <button class="btn-primary" (click)="ouvrirAjout()">
+        + إضافة طالب
+      </button>
+    </div>
+
+    <div class="content">
+
+      <!-- Success message -->
+      @if (successMsg()) {
+        <div class="alert alert-success">{{ successMsg() }}</div>
+      }
+
+      <!-- ── FILTRES ──────────────────────────── -->
+      <div class="filters-bar">
+        <input
+          class="search-input"
+          placeholder="🔍 ابحث عن طالب..."
+          [value]="searchQuery()"
+          (input)="onSearch($any($event.target).value)"
+        />
+        <select
+          class="filter-select"
+          [value]="filtreGroupe()"
+          (change)="onFiltreGroupe($any($event.target).value)"
+        >
+          <option value="">كل المجموعات</option>
+          @for (g of groupes(); track g.id) {
+            <option [value]="g.id">{{ g.nom }}</option>
+          }
+        </select>
+        <select
+          class="filter-select"
+          [value]="filtreNiveau()"
+          (change)="onFiltreNiveau($any($event.target).value)"
+        >
+          <option value="">كل المستويات</option>
+          <option value="مبتدئ">مبتدئ</option>
+          <option value="متوسط">متوسط</option>
+          <option value="متقدم">متقدم</option>
+        </select>
+        <button class="btn-ghost" (click)="loadEtudiants()">
+          🔄 تحديث
+        </button>
+      </div>
+
+      <!-- ── TABLE ───────────────────────────── -->
+      <div class="card">
+        @if (loading()) {
+          <div class="loading-wrap">
+            <div class="spinner"></div>
+            <p>جاري التحميل...</p>
+          </div>
+        } @else if (etudiantsFiltres().length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <p>لا يوجد طلاب</p>
+            <button class="btn-primary" (click)="ouvrirAjout()">
+              + إضافة أول طالب
+            </button>
+          </div>
+        } @else {
+          <table class="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الطالب</th>
+                <th>المجموعة</th>
+                <th>المستوى</th>
+                <th>تاريخ الانضمام</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of etudiantsFiltres(); track e.id; let i = $index) {
+                <tr>
+                  <td class="td-num">{{ i + 1 }}</td>
+                  <td>
+                    <div class="stu-cell">
+                      <div class="stu-avatar">
+                        {{ e.nom?.charAt(0) }}
+                      </div>
+                      <div class="stu-name">{{ e.nom }}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge"
+                      [class]="getBadgeGroupe(e.groupes?.type)">
+                      {{ e.groupes?.nom || '—' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge"
+                      [class]="getNiveauBadge(e.niveau)">
+                      {{ e.niveau || '—' }}
+                    </span>
+                  </td>
+                  <td class="td-date">
+                    {{ e.created_at | date:'dd/MM/yyyy' }}
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <button
+                        class="action-btn btn-edit"
+                        (click)="ouvrirEdit(e)"
+                        title="تعديل">
+                        ✏️
+                      </button>
+                      <button
+                        class="action-btn btn-delete"
+                        (click)="confirmerSuppression(e)"
+                        title="حذف">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ══ MODAL AJOUT/MODIFICATION ══════════════════ -->
+@if (showModal()) {
+  <div class="modal-overlay" (click)="fermerModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>{{ modeEdit() ? '✏️ تعديل الطالب' : '+ إضافة طالب جديد' }}</h3>
+        <button class="modal-close" (click)="fermerModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+
+        @if (errorMsg()) {
+          <div class="alert alert-error">⚠️ {{ errorMsg() }}</div>
+        }
+        @if (successMsg()) {
+          <div class="alert alert-success">{{ successMsg() }}</div>
+        }
+
+        <!-- Nom -->
+        <div class="form-group">
+          <label>الاسم الكامل <span class="required">*</span></label>
+          <input
+            class="form-input"
+            placeholder="أدخل اسم الطالب"
+            [value]="form().nom"
+            (input)="updateForm('nom', $any($event.target).value)"
+          />
+        </div>
+        
+        <!-- Email + Password (seulement pour ajout) -->
+        @if (!modeEdit()) {
+          <div class="form-group">
+            <label>البريد الإلكتروني <span class="required">*</span></label>
+            <input
+              class="form-input"
+              type="email"
+              placeholder="example@tahbeer-edu.ma"
+              [value]="form().email"
+              (input)="updateForm('email', $any($event.target).value)"
+            />
+          </div>
+          <div class="form-group">
+            <label>كلمة المرور <span class="required">*</span></label>
+            <input
+              class="form-input"
+              type="password"
+              placeholder="••••••••"
+              [value]="form().password"
+              (input)="updateForm('password', $any($event.target).value)"
+            />
+          </div>
+        }
+
+        <!-- Groupe + Niveau sur 2 colonnes -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>المجموعة <span class="required">*</span></label>
+            <select
+              class="form-input"
+              [value]="form().groupe_id"
+              (change)="updateForm('groupe_id', $any($event.target).value)"
+            >
+              <option value="">اختر المجموعة</option>
+              @for (g of groupes(); track g.id) {
+                <option [value]="g.id">{{ g.nom }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>المستوى <span class="required">*</span></label>
+            <select
+              class="form-input"
+              [value]="form().niveau"
+              (change)="updateForm('niveau', $any($event.target).value)"
+            >
+              <option value="">اختر المستوى</option>
+              <option value="مبتدئ">مبتدئ</option>
+              <option value="متوسط">متوسط</option>
+              <option value="متقدم">متقدم</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ghost" (click)="fermerModal()">
+          إلغاء
+        </button>
+        <button
+          class="btn-primary"
+          (click)="soumettre()"
+          [disabled]="formLoading()"
+        >
+          @if (formLoading()) {
+            <span class="spinner-sm"></span> جاري الحفظ...
+          } @else {
+            {{ modeEdit() ? '💾 حفظ التعديلات' : '+ إضافة الطالب' }}
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
+
+<!-- ══ MODAL SUPPRESSION ══════════════════════════ -->
+@if (showDeleteModal()) {
+  <div class="modal-overlay" (click)="showDeleteModal.set(false)">
+    <div class="modal modal-sm" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>🗑️ تأكيد الحذف</h3>
+        <button class="modal-close"
+          (click)="showDeleteModal.set(false)">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="delete-confirm">
+          <div class="delete-icon">⚠️</div>
+          <p>
+            هل أنت متأكد من حذف الطالب
+            <strong>{{ etudiantToDelete()?.nom }}</strong>؟
+          </p>
+          <p class="delete-warning">
+            سيتم حذف جميع بياناته (الحضور، السور، الواجبات)
+            ولا يمكن التراجع عن هذا الإجراء.
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ghost"
+          (click)="showDeleteModal.set(false)">
+          إلغاء
+        </button>
+        <button
+          class="btn-danger"
+          (click)="supprimerEtudiant()"
+          [disabled]="formLoading()"
+        >
+          @if (formLoading()) {
+            جاري الحذف...
+          } @else {
+            🗑️ نعم، احذف الطالب
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
