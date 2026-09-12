@@ -5,7 +5,7 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
   selector: 'app-rapports',
-  imports: [CommonModule, RouterLink, SidebarComponent],
+  imports: [CommonModule, SidebarComponent],
   templateUrl: './rapports.component.html',
   styleUrl: './rapports.component.css'
 })

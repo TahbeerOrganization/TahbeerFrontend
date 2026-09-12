@@ -2,12 +2,11 @@ import { Component, OnInit, signal } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
   selector: 'app-etudiants',
-  imports: [CommonModule, RouterLink, SidebarComponent],
+  imports: [CommonModule, SidebarComponent],
   templateUrl: './etudiants.component.html',
   styleUrl: './etudiants.component.css'
 })
