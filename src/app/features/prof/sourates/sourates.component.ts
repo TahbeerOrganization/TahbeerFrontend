@@ -5,7 +5,7 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
   selector: 'app-sourates',
-  imports: [CommonModule, RouterLink, SidebarComponent],
+  imports: [CommonModule, SidebarComponent],
   templateUrl: './sourates.component.html',
   styleUrl: './sourates.component.css'
 })
