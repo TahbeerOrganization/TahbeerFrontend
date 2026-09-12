@@ -1,0 +1,10 @@
+/* ══ LAYOUT (même que dashboard) ══════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.layout {
+  display: flex;
+  height: 100vh;
+  background: #f0f4f8;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  direction: rtl;
+}
