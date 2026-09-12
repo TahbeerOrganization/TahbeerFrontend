@@ -1,0 +1,64 @@
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <img src="assets/images/logo.jpg" alt="تحبير" class="logo-img" />
+    <div>
+      <div class="logo-title">تحبير أكاديمي</div>
+      <div class="logo-sub">أكاديمية القرآن الكريم</div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-label">الرئيسية</div>
+    <a class="nav-item" [class.active]="activePage === 'dashboard'"
+      routerLink="/prof/dashboard">
+      <span class="nav-icon">📊</span> لوحة التحكم
+    </a>
+    <a class="nav-item" [class.active]="activePage === 'etudiants'"
+      routerLink="/prof/etudiants">
+      <span class="nav-icon">👥</span> الطلاب
+    </a>
+    <a class="nav-item" [class.active]="activePage === 'presences'"
+      routerLink="/prof/presences">
+      <span class="nav-icon">✅</span> الحضور
+    </a>
+    <a class="nav-item" [class.active]="activePage === 'sourates'"
+      routerLink="/prof/sourates">
+      <span class="nav-icon">📖</span> السور
+    </a>
+
+    <div class="nav-label">التعليم</div>
+    <a class="nav-item" [class.active]="activePage === 'devoirs'"
+      routerLink="/prof/devoirs">
+      <span class="nav-icon">📝</span> الواجبات
+    </a>
+    <a class="nav-item" [class.active]="activePage === 'evaluations'"
+      routerLink="/prof/evaluations">
+      <span class="nav-icon">⭐</span> التقييمات
+    </a>
+    <a class="nav-item" [class.active]="activePage === 'rapports'"
+      routerLink="/prof/rapports">
+      <span class="nav-icon">📈</span> التقارير
+    </a>
+
+    <div class="nav-label">الإدارة</div>
+    <a class="nav-item" [class.active]="activePage === 'groupes'"
+      routerLink="/prof/groupes">
+      <span class="nav-icon">🗂️</span> المجموعات
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">
+        {{ auth.currentUser()?.nom?.charAt(0) }}
+      </div>
+      <div>
+        <div class="user-name">{{ auth.currentUser()?.nom }}</div>
+        <div class="user-role">معلم</div>
+      </div>
+    </div>
+    <button class="logout-btn" (click)="logout()">
+      🚪 خروج
+    </button>
+  </div>
+</aside>
