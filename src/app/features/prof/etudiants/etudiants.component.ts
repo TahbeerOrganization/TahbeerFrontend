@@ -3,6 +3,7 @@ import { SupabaseService } from '../../../core/services/supabase.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from '../sidebar/sidebar.component';
+import { Route, Router } from '@angular/router';
 
 @Component({
   selector: 'app-etudiants',
@@ -47,7 +48,8 @@ export class EtudiantsComponent implements OnInit {
 
   constructor(
     private sb: SupabaseService,
-    public auth: AuthService
+    public auth: AuthService,
+    public router: Router
   ) {}
 
   ngOnInit() {
@@ -320,4 +322,24 @@ export class EtudiantsComponent implements OnInit {
   updateForm(field: string, value: string) {
     this.form.update(f => ({ ...f, [field]: value }));
   }
+
+  ouvrirHifd(etudiant: any) {
+  this.router.navigate(['/hifd'], {
+    queryParams: {
+      etudiant: etudiant.id
+    }
+  });
+  }
+  ouvrirPaiement(etudiant: any): void {
+  this.router.navigate(
+    ['/paiements'],
+    {
+      queryParams: {
+        etudiant: etudiant.id
+      }
+    }
+  );
+}
+
+
 }

@@ -33,7 +33,7 @@
 
 /* ══ FILTERS ══════════════════════════════════════ */
 .filters-bar {
-  display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+  display: flex; gap: 15px; margin-bottom: 16px; flex-wrap: wrap;
   align-items: center;
 }
 .search-input {
@@ -219,4 +219,253 @@
   border-top-color: #fff; border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
+}
+/* ═══════════════════════════════════════════════
+   RESPONSIVE - STUDENTS PAGE
+═══════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ─────────────────────────────────────────────
+     MAIN
+  ───────────────────────────────────────────── */
+
+  .main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .content {
+    padding: 16px 12px;
+    width: 100%;
+  }
+
+  /* ─────────────────────────────────────────────
+     TOPBAR
+  ───────────────────────────────────────────── */
+
+  .topbar {
+    min-height: 64px;
+    height: auto;
+
+    padding: 10px 65px 10px 12px;
+
+    gap: 10px;
+  }
+
+  .topbar-title {
+    font-size: 15px;
+  }
+
+  .topbar-sub {
+    font-size: 11px;
+  }
+
+  .topbar .btn-primary {
+    padding: 8px 10px;
+    font-size: 11px;
+
+    white-space: nowrap;
+  }
+
+  /* ─────────────────────────────────────────────
+     FILTERS
+  ───────────────────────────────────────────── */
+
+  .filters-bar {
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 9px;
+
+    width: 100%;
+
+    margin-bottom: 14px;
+  }
+
+  .search-input,
+  .filter-select,
+  .filters-bar .btn-ghost {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+  }
+
+  .search-input {
+    flex: none;
+  }
+
+  .filter-select {
+    appearance: auto;
+  }
+
+  .filters-bar .btn-ghost {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ─────────────────────────────────────────────
+     CARD
+  ───────────────────────────────────────────── */
+
+  .card {
+    width: 100%;
+    padding: 12px;
+
+    overflow: hidden;
+  }
+
+  /* ─────────────────────────────────────────────
+     TABLE → CARDS
+  ───────────────────────────────────────────── */
+
+  /* ══ TABLE RESPONSIVE ═══════════════════════════ */
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: collapse;
+  font-size: 13px;
+  direction: rtl;
+}
+
+.table th {
+  text-align: right;
+  padding: 10px 12px;
+  color: #888;
+  font-weight: 500;
+  border-bottom: 0.5px solid #e0ded8;
+  background: #f8f8f6;
+
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px;
+  border-bottom: 0.5px solid #f0ede8;
+  color: #1a1a1a;
+  vertical-align: middle;
+
+  white-space: nowrap;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: #f8f8f6;
+}
+
+/* ══ TABLE COLUMNS ══════════════════════════════ */
+
+.td-num {
+  color: #888;
+  font-size: 12px;
+  width: 45px;
+  min-width: 45px;
+}
+
+.td-date {
+  color: #888;
+  font-size: 12px;
+  min-width: 120px;
+}
+
+.email-cell {
+  direction: ltr;
+  text-align: right;
+  min-width: 200px;
+}
+
+/* ══ STUDENT ════════════════════════════════════ */
+
+.stu-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+}
+
+.stu-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #E3F2FB;
+  color: #0D4F7C;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.stu-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+/* ══ BADGES ═════════════════════════════════════ */
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ══ ACTIONS ════════════════════════════════════ */
+
+.actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: background 0.15s;
+}
+
+.btn-edit {
+  background: #E3F2FB;
+}
+
+.btn-edit:hover {
+  background: #BBDEFB;
+}
+
+.btn-delete {
+  background: #FAECE7;
+}
+
+.btn-delete:hover {
+  background: #F0997B;
+}
 }

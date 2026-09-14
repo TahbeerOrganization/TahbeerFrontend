@@ -1,64 +1,172 @@
-<aside class="sidebar">
+<!-- MOBILE TOGGLE -->
+<button
+  class="mobile-menu-btn"
+  type="button"
+  (click)="toggle()"
+  [attr.aria-label]="isOpen() ? 'إغلاق القائمة' : 'فتح القائمة'"
+>
+  <span *ngIf="!isOpen()">☰</span>
+  <span *ngIf="isOpen()">✕</span>
+</button>
+
+<!-- OVERLAY MOBILE -->
+@if (isOpen()) {
+  <div
+    class="sidebar-overlay"
+    (click)="close()"
+  ></div>
+}
+
+<!-- SIDEBAR -->
+<aside
+  class="sidebar"
+  [class.sidebar-open]="isOpen()"
+>
   <div class="sidebar-logo">
-    <img src="assets/images/logo.jpg" alt="تحبير" class="logo-img" />
+    <img
+      src="assets/images/logo.jpg"
+      alt="تحبير"
+      class="logo-img"
+    />
+
     <div>
       <div class="logo-title">تحبير أكاديمي</div>
       <div class="logo-sub">أكاديمية القرآن الكريم</div>
     </div>
+
+    <!-- CLOSE BUTTON MOBILE -->
+    <button
+      class="sidebar-close"
+      type="button"
+      (click)="close()"
+    >
+      ✕
+    </button>
   </div>
 
   <nav class="nav">
+
     <div class="nav-label">الرئيسية</div>
-    <a class="nav-item" [class.active]="activePage === 'dashboard'"
-      routerLink="/prof/dashboard">
-      <span class="nav-icon">📊</span> لوحة التحكم
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'dashboard'"
+      routerLink="/prof/dashboard"
+      (click)="close()"
+    >
+      <span class="nav-icon">📊</span>
+      <span>لوحة التحكم</span>
     </a>
-    <a class="nav-item" [class.active]="activePage === 'etudiants'"
-      routerLink="/prof/etudiants">
-      <span class="nav-icon">👥</span> الطلاب
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'etudiants'"
+      routerLink="/prof/etudiants"
+      (click)="close()"
+    >
+      <span class="nav-icon">👥</span>
+      <span>الطلاب</span>
     </a>
-    <a class="nav-item" [class.active]="activePage === 'presences'"
-      routerLink="/prof/presences">
-      <span class="nav-icon">✅</span> الحضور
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'presences'"
+      routerLink="/prof/presences"
+      (click)="close()"
+    >
+      <span class="nav-icon">✅</span>
+      <span>الحضور</span>
     </a>
-    <a class="nav-item" [class.active]="activePage === 'sourates'"
-      routerLink="/prof/sourates">
-      <span class="nav-icon">📖</span> السور
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'sourates'"
+      routerLink="/prof/sourates"
+      (click)="close()"
+    >
+      <span class="nav-icon">📖</span>
+      <span>الأقسام</span>
     </a>
 
     <div class="nav-label">التعليم</div>
-    <a class="nav-item" [class.active]="activePage === 'devoirs'"
-      routerLink="/prof/devoirs">
-      <span class="nav-icon">📝</span> الواجبات
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'hifd'"
+      routerLink="/prof/hifd"
+      (click)="close()"
+    >
+      <span class="nav-icon">📖</span>
+      <span>الحفظ</span>
     </a>
-    <a class="nav-item" [class.active]="activePage === 'evaluations'"
-      routerLink="/prof/evaluations">
-      <span class="nav-icon">⭐</span> التقييمات
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'paiements'"
+      routerLink="/prof/paiements"
+      (click)="close()"
+    >
+      <span class="nav-icon">💰</span>
+      <span>الأداءات</span>
     </a>
-    <a class="nav-item" [class.active]="activePage === 'rapports'"
-      routerLink="/prof/rapports">
-      <span class="nav-icon">📈</span> التقارير
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'devoirs'"
+      routerLink="/prof/devoirs"
+      (click)="close()"
+    >
+      <span class="nav-icon">📝</span>
+      <span>الواجبات</span>
+    </a>
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'rapports'"
+      routerLink="/prof/rapports"
+      (click)="close()"
+    >
+      <span class="nav-icon">📈</span>
+      <span>التقارير</span>
     </a>
 
     <div class="nav-label">الإدارة</div>
-    <a class="nav-item" [class.active]="activePage === 'groupes'"
-      routerLink="/prof/groupes">
-      <span class="nav-icon">🗂️</span> المجموعات
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'groupes'"
+      routerLink="/prof/groupes"
+      (click)="close()"
+    >
+      <span class="nav-icon">🗂️</span>
+      <span>المجموعات</span>
     </a>
+
   </nav>
 
   <div class="sidebar-footer">
+
     <div class="user-info">
       <div class="user-avatar">
         {{ auth.currentUser()?.nom?.charAt(0) }}
       </div>
-      <div>
-        <div class="user-name">{{ auth.currentUser()?.nom }}</div>
-        <div class="user-role">معلم</div>
+
+      <div class="user-text">
+        <div class="user-name">
+          {{ auth.currentUser()?.nom }}
+        </div>
+
+        <div class="user-role">
+          معلم
+        </div>
       </div>
     </div>
-    <button class="logout-btn" (click)="logout()">
+
+    <button
+      class="logout-btn"
+      type="button"
+      (click)="logout()"
+    >
       🚪 خروج
     </button>
+
   </div>
 </aside>

@@ -9,41 +9,6 @@
   direction: rtl;
 }
 
-/* ══ SIDEBAR ══════════════════════════════════════ */
-.sidebar {
-  width: 220px;
-  background: linear-gradient(180deg, #0B71A7 0%, #1B6FA8 100%);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  overflow-y: auto;
-}
-
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 14px;
-  border-bottom: 0.5px solid rgba(255,255,255,0.15);
-}
-
-.logo-img {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.logo-title {
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.logo-sub {
-  color: rgba(255,255,255,0.55);
-  font-size: 10px;
-}
 
 /* ── Nav ── */
 .nav {
@@ -484,3 +449,282 @@
 }
 
 .btn-primary:hover { background: #085041; }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+
+/* ───────────── Tablet ───────────── */
+
+@media (max-width: 1100px) {
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+/* ───────────── Mobile ───────────── */
+
+@media (max-width: 768px) {
+
+  .layout {
+    display: block;
+
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .main {
+    width: 100%;
+    min-width: 0;
+
+    overflow: hidden;
+  }
+
+  /* TOPBAR */
+
+  .topbar {
+    height: 64px;
+
+    padding: 0 68px 0 14px;
+
+    width: 100%;
+  }
+
+  .topbar-title {
+    font-size: 15px;
+  }
+
+  .topbar-sub {
+    font-size: 11px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    max-width: 220px;
+  }
+
+  .btn-refresh {
+    padding: 7px 10px;
+
+    font-size: 11px;
+  }
+
+  /* CONTENT */
+
+  .content {
+    width: 100%;
+
+    padding: 14px 12px;
+
+    overflow-x: hidden;
+  }
+
+  /* ═══════════════════════════════════════
+     KPI → 2 PAR LIGNE
+  ═══════════════════════════════════════ */
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    gap: 10px;
+
+    margin-bottom: 14px;
+  }
+
+  .kpi-card {
+    padding: 13px;
+
+    min-width: 0;
+  }
+
+  .kpi-icon {
+    font-size: 21px;
+
+    margin-bottom: 7px;
+  }
+
+  .kpi-val {
+    font-size: 23px;
+  }
+
+  .kpi-sub {
+    font-size: 12px;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+  }
+
+  .kpi-pct {
+    font-size: 11px;
+  }
+
+  /* ═══════════════════════════════════════
+     TWO COL → 1 COL
+  ═══════════════════════════════════════ */
+
+  .two-col {
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    gap: 14px;
+
+    margin-bottom: 14px;
+  }
+
+  /* ═══════════════════════════════════════
+     CARDS
+  ═══════════════════════════════════════ */
+
+  .card {
+    width: 100%;
+
+    min-width: 0;
+
+    padding: 13px;
+
+    border-radius: 10px;
+  }
+
+  .card-header {
+    gap: 10px;
+
+    margin-bottom: 12px;
+  }
+
+  .card-title {
+    font-size: 13px;
+  }
+
+  .card-link {
+    font-size: 11px;
+
+    white-space: nowrap;
+  }
+
+  /* ═══════════════════════════════════════
+     TABLE
+  ═══════════════════════════════════════ */
+
+  .card:has(.table) {
+    overflow: hidden;
+  }
+
+  .table {
+    width: 100%;
+
+    min-width: 560px;
+
+    font-size: 12px;
+  }
+
+  .table th {
+    padding: 8px 7px;
+
+    font-size: 11px;
+  }
+
+  .table td {
+    padding: 9px 7px;
+
+    font-size: 12px;
+  }
+
+  /*
+   Wrapper horizontal implicite
+   */
+  .card {
+    overflow-x: auto;
+  }
+
+  .card-header,
+  .empty-state,
+  .presence-summary,
+  .alertes-list {
+    min-width: 0;
+  }
+
+  /* ═══════════════════════════════════════
+     STUDENT
+  ═══════════════════════════════════════ */
+
+  .stu-cell {
+    gap: 6px;
+  }
+
+  .stu-avatar {
+    width: 27px;
+    height: 27px;
+
+    font-size: 11px;
+  }
+
+  .stu-name {
+    font-size: 12px;
+  }
+
+  .stu-tel {
+    font-size: 10px;
+  }
+
+  /* ═══════════════════════════════════════
+     ALERTES
+  ═══════════════════════════════════════ */
+
+  .alerte-item {
+    padding: 8px;
+  }
+
+  .alerte-nom {
+    font-size: 12px;
+  }
+
+  .alerte-count {
+    font-size: 10px;
+  }
+
+  /* ═══════════════════════════════════════
+     PRESENCE
+  ═══════════════════════════════════════ */
+
+  .presence-summary {
+    gap: 6px;
+  }
+
+  .ps-item {
+    padding: 7px 5px;
+
+    font-size: 11px;
+  }
+
+  .ps-item strong {
+    font-size: 18px;
+  }
+
+  /* ═══════════════════════════════════════
+     BUTTON
+  ═══════════════════════════════════════ */
+
+  .btn-primary {
+    font-size: 11px;
+
+    padding: 8px 12px;
+  }
+
+}
