@@ -1,0 +1,606 @@
+<div class="layout" dir="rtl">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════ -->
+  <app-sidebar activePage="hifd"></app-sidebar>
+
+  <!-- ══ MAIN ═════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+
+      <div>
+        <div class="topbar-title">
+          📖 تتبع الحفظ
+        </div>
+
+        <div class="topbar-sub">
+          متابعة حفظ الطلاب وتقييم مستواهم
+        </div>
+      </div>
+
+      <button
+        class="btn-primary"
+        (click)="ouvrirAjout()"
+      >
+        + تسجيل حفظ
+      </button>
+
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- ══ FILTERS ═══════════════════════════════ -->
+      <div class="filters-bar">
+
+        <select
+          class="filter-select"
+          [value]="filtreGroupe()"
+          (change)="filtreGroupe.set($any($event.target).value)"
+        >
+          <option value="">كل المجموعات</option>
+
+          @for (g of groupes(); track g.id) {
+            <option [value]="g.id">
+              {{ g.nom }}
+            </option>
+          }
+        </select>
+
+        <select
+          class="filter-select"
+          [value]="filtreEtudiant()"
+          (change)="filtreEtudiant.set($any($event.target).value)"
+        >
+          <option value="">كل الطلاب</option>
+
+          @for (e of etudiants(); track e.id) {
+            <option [value]="e.id">
+              {{ e.nom }}
+            </option>
+          }
+        </select>
+
+        <select
+          class="filter-select"
+          [value]="filtreEvaluation()"
+          (change)="filtreEvaluation.set($any($event.target).value)"
+        >
+          <option value="">كل التقييمات</option>
+          <option value="ممتاز">ممتاز</option>
+          <option value="جيد">جيد</option>
+          <option value="متوسط">متوسط</option>
+          <option value="ضعيف">يحتاج مراجعة</option>
+        </select>
+
+        <button
+          class="btn-ghost"
+          (click)="loadHifd()"
+        >
+          🔄 تحديث
+        </button>
+
+      </div>
+
+
+      <!-- ══ STATISTICS ═══════════════════════════ -->
+      <div class="stats-grid">
+
+        <div class="stat-card">
+
+          <div class="stat-icon blue">
+            📖
+          </div>
+
+          <div class="stat-info">
+            <span>إجمالي الآيات</span>
+            <strong>{{ totalAyat() }}</strong>
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-icon green">
+            ⭐
+          </div>
+
+          <div class="stat-info">
+            <span>حفظ ممتاز</span>
+            <strong>{{ nombreExcellent() }}</strong>
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-icon orange">
+            🔄
+          </div>
+
+          <div class="stat-info">
+            <span>يحتاج مراجعة</span>
+            <strong>{{ nombreRevision() }}</strong>
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-icon purple">
+            👥
+          </div>
+
+          <div class="stat-info">
+            <span>الطلاب</span>
+            <strong>{{ etudiantsFiltres().length }}</strong>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ══ TABLE CARD ═══════════════════════════ -->
+      <div class="card">
+
+        @if (loading()) {
+
+          <div class="loading-wrap">
+
+            <div class="spinner"></div>
+
+            <p>
+              جاري التحميل...
+            </p>
+
+          </div>
+
+        }
+
+        @else if (hifdFiltres().length === 0) {
+
+          <div class="empty-state">
+
+            <div class="empty-icon">
+              📖
+            </div>
+
+            <p>
+              لا توجد تسجيلات للحفظ
+            </p>
+
+            <button
+              class="btn-primary"
+              (click)="ouvrirAjout()"
+            >
+              + تسجيل أول حفظ
+            </button>
+
+          </div>
+
+        }
+
+        @else {
+
+          <!-- RESPONSIVE TABLE -->
+          <div class="table-responsive">
+
+            <table class="table">
+
+              <thead>
+
+                <tr>
+
+                  <th>#</th>
+
+                  <th>الطالب</th>
+
+                  <th>السورة</th>
+
+                  <th>من الآية</th>
+
+                  <th>إلى الآية</th>
+
+                  <th>عدد الآيات</th>
+
+                  <th>التقييم</th>
+
+                  <th>تاريخ الحفظ</th>
+
+                  <th>الإجراءات</th>
+
+                </tr>
+
+              </thead>
+
+
+              <tbody>
+
+                @for (
+                  h of hifdFiltres();
+                  track h.id;
+                  let i = $index
+                ) {
+
+                  <tr>
+
+                    <!-- NUMBER -->
+                    <td class="td-num">
+                      {{ i + 1 }}
+                    </td>
+
+
+                    <!-- STUDENT -->
+                    <td>
+
+                      <div class="stu-cell">
+
+                        <div class="stu-avatar">
+                          {{ h.etudiant?.nom?.charAt(0) }}
+                        </div>
+
+                        <div>
+
+                          <div class="stu-name">
+                            {{ h.etudiant?.nom }}
+                          </div>
+
+                          <small class="group-name">
+                            {{ h.etudiant?.groupe }}
+                          </small>
+
+                        </div>
+
+                      </div>
+
+                    </td>
+
+
+                    <!-- SOURATE -->
+                    <td>
+
+                      <strong class="sourate-name">
+                        {{ h.sourate }}
+                      </strong>
+
+                    </td>
+
+
+                    <!-- AYAT START -->
+                    <td>
+                      {{ h.ayat_debut }}
+                    </td>
+
+
+                    <!-- AYAT END -->
+                    <td>
+                      {{ h.ayat_fin }}
+                    </td>
+
+
+                    <!-- AYAT COUNT -->
+                    <td>
+
+                      <span class="ayat-badge">
+                        {{ h.nombre_ayat }} آية
+                      </span>
+
+                    </td>
+
+
+                    <!-- EVALUATION -->
+                    <td>
+
+                      <span
+                        class="badge"
+                        [class]="getEvaluationBadge(h.evaluation)"
+                      >
+                        {{ h.evaluation }}
+                      </span>
+
+                    </td>
+
+
+                    <!-- DATE -->
+                    <td class="td-date">
+                      {{ h.date | date:'dd/MM/yyyy' }}
+                    </td>
+
+
+                    <!-- ACTIONS -->
+                    <td>
+
+                      <div class="actions">
+
+                        <button
+                          class="action-btn btn-edit"
+                          (click)="modifier(h)"
+                          title="تعديل"
+                        >
+                          ✏️
+                        </button>
+
+                        <button
+                          class="action-btn btn-delete"
+                          (click)="supprimer(h)"
+                          title="حذف"
+                        >
+                          🗑️
+                        </button>
+
+                      </div>
+
+                    </td>
+
+                  </tr>
+
+                }
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        }
+
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     MODAL AJOUT / MODIFICATION
+════════════════════════════════════════════════ -->
+
+@if (showModal()) {
+
+  <div
+    class="modal-overlay"
+    (click)="fermerModal()"
+  >
+
+    <div
+      class="modal"
+      (click)="$event.stopPropagation()"
+    >
+
+      <!-- HEADER -->
+      <div class="modal-header">
+
+        <h3>
+          {{ modeEdit()
+            ? '✏️ تعديل الحفظ'
+            : '+ تسجيل حفظ جديد'
+          }}
+        </h3>
+
+        <button
+          class="modal-close"
+          (click)="fermerModal()"
+        >
+          ✕
+        </button>
+
+      </div>
+
+
+      <!-- BODY -->
+      <div class="modal-body">
+
+
+        <!-- STUDENT -->
+        <div class="form-group">
+
+          <label>
+            الطالب
+            <span class="required">*</span>
+          </label>
+
+          <select
+            class="form-input"
+            [value]="form().etudiant_id"
+            (change)="updateForm(
+              'etudiant_id',
+              $any($event.target).value
+            )"
+          >
+
+            <option value="">
+              اختر الطالب
+            </option>
+
+            @for (e of etudiants(); track e.id) {
+
+              <option [value]="e.id">
+                {{ e.nom }} - {{ e.groupe }}
+              </option>
+
+            }
+
+          </select>
+
+        </div>
+
+
+        <!-- SOURATE -->
+        <div class="form-group">
+
+          <label>
+            السورة
+            <span class="required">*</span>
+          </label>
+
+          <input
+            class="form-input"
+            placeholder="مثال: سورة البقرة"
+            [value]="form().sourate"
+            (input)="updateForm(
+              'sourate',
+              $any($event.target).value
+            )"
+          />
+
+        </div>
+
+
+        <!-- AYAT -->
+        <div class="form-row">
+
+          <div class="form-group">
+
+            <label>
+              من الآية
+            </label>
+
+            <input
+              class="form-input"
+              type="number"
+              min="1"
+              [value]="form().ayat_debut"
+              (input)="updateForm(
+                'ayat_debut',
+                +$any($event.target).value
+              )"
+            />
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label>
+              إلى الآية
+            </label>
+
+            <input
+              class="form-input"
+              type="number"
+              min="1"
+              [value]="form().ayat_fin"
+              (input)="updateForm(
+                'ayat_fin',
+                +$any($event.target).value
+              )"
+            />
+
+          </div>
+
+        </div>
+
+
+        <!-- EVALUATION -->
+        <div class="form-group">
+
+          <label>
+            تقييم الحفظ
+            <span class="required">*</span>
+          </label>
+
+          <select
+            class="form-input"
+            [value]="form().evaluation"
+            (change)="updateForm(
+              'evaluation',
+              $any($event.target).value
+            )"
+          >
+
+            <option value="">
+              اختر التقييم
+            </option>
+
+            <option value="ممتاز">
+              ⭐ ممتاز
+            </option>
+
+            <option value="جيد">
+              👍 جيد
+            </option>
+
+            <option value="متوسط">
+              🟡 متوسط
+            </option>
+
+            <option value="ضعيف">
+              🔴 يحتاج مراجعة
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <!-- NOTES -->
+        <div class="form-group">
+
+          <label>
+            ملاحظات الأستاذ
+          </label>
+
+          <textarea
+            class="form-input textarea"
+            placeholder="مثال: الحفظ جيد لكن يحتاج مراجعة..."
+            [value]="form().notes"
+            (input)="updateForm(
+              'notes',
+              $any($event.target).value
+            )"
+          ></textarea>
+
+        </div>
+
+      </div>
+
+
+      <!-- FOOTER -->
+      <div class="modal-footer">
+
+        <button
+          class="btn-ghost"
+          (click)="fermerModal()"
+        >
+          إلغاء
+        </button>
+
+        <button
+          class="btn-primary"
+          (click)="soumettre()"
+          [disabled]="formLoading()"
+        >
+
+          @if (formLoading()) {
+
+            <span class="spinner-sm"></span>
+
+            جاري الحفظ...
+
+          }
+
+          @else {
+
+            {{ modeEdit()
+              ? '💾 حفظ التعديلات'
+              : '+ تسجيل الحفظ'
+            }}
+
+          }
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+}

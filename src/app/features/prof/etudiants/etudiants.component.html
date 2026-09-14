@@ -1,7 +1,7 @@
 <div class="layout" dir="rtl">
 
   <!-- ══ SIDEBAR ══════════════════════════════════ -->
-  <app-sidebar></app-sidebar>
+  <app-sidebar activePage="etudiants"></app-sidebar>
 
   <!-- ══ MAIN ══════════════════════════════════════ -->
   <main class="main">
@@ -60,85 +60,137 @@
       </div>
 
       <!-- ── TABLE ───────────────────────────── -->
-      <div class="card">
-        @if (loading()) {
-          <div class="loading-wrap">
-            <div class="spinner"></div>
-            <p>جاري التحميل...</p>
-          </div>
-        } @else if (etudiantsFiltres().length === 0) {
-          <div class="empty-state">
-            <div class="empty-icon">👥</div>
-            <p>لا يوجد طلاب</p>
-            <button class="btn-primary" (click)="ouvrirAjout()">
-              + إضافة أول طالب
-            </button>
-          </div>
-        } @else {
-          <table class="table">
-            <thead>
+      <!-- ── TABLE ───────────────────────────── -->
+<div class="card">
+  @if (loading()) {
+
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <p>جاري التحميل...</p>
+    </div>
+
+  } @else if (etudiantsFiltres().length === 0) {
+
+    <div class="empty-state">
+      <div class="empty-icon">👥</div>
+      <p>لا يوجد طلاب</p>
+      <button class="btn-primary" (click)="ouvrirAjout()">
+        + إضافة أول طالب
+      </button>
+    </div>
+
+  } @else {
+
+    <!-- WRAPPER RESPONSIVE -->
+      <div class="table-responsive">
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>الطالب</th>
+              <th>البريد الإلكتروني</th>
+              <th>المجموعة</th>
+              <th>المستوى</th>
+              <th>تاريخ الانضمام</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (e of etudiantsFiltres(); track e.id; let i = $index) {
+
               <tr>
-                <th>#</th>
-                <th>الطالب</th>
-                <th>البريد الاكتروني</th>
-                <th>المجموعة</th>
-                <th>المستوى</th>
-                <th>تاريخ الانضمام</th>
-                <th>الإجراءات</th>
+                <td class="td-num">
+                  {{ i + 1 }}
+                </td>
+
+                <td>
+                  <div class="stu-cell">
+                    <div class="stu-avatar">
+                      {{ e.nom?.charAt(0) }}
+                    </div>
+
+                    <div class="stu-name">
+                      {{ e.nom }}
+                    </div>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="stu-name email-cell">
+                    {{ e.email }}
+                  </div>
+                </td>
+
+                <td>
+                  <span
+                    class="badge"
+                    [class]="getBadgeGroupe(e.groupes?.type)">
+                    {{ e.groupes?.nom || '—' }}
+                  </span>
+                </td>
+
+                <td>
+                  <span
+                    class="badge"
+                    [class]="getNiveauBadge(e.niveau)">
+                    {{ e.niveau || '—' }}
+                  </span>
+                </td>
+
+                <td class="td-date">
+                  {{ e.created_at | date:'dd/MM/yyyy' }}
+                </td>
+                <td>
+                  <div class="actions">
+
+                    <!-- Hifd -->
+                    <button
+                      class="action-btn btn-hifd"
+                      (click)="ouvrirHifd(e)"
+                      title="تتبع الحفظ"
+                    >
+                      📖
+                    </button>
+                    <button 
+                      class="action-btn btn-payment" 
+                      (click)="ouvrirPaiement(e)" 
+                      title="الأداءات" 
+                      > 
+                        💰 
+                      </button>
+
+                    <!-- Modifier -->
+                    <button
+                      class="action-btn btn-edit"
+                      (click)="ouvrirEdit(e)"
+                      title="تعديل"
+                    >
+                      ✏️
+                    </button>
+
+                    <!-- Supprimer -->
+                    <button
+                      class="action-btn btn-delete"
+                      (click)="confirmerSuppression(e)"
+                      title="حذف"
+                    >
+                      🗑️
+                    </button>
+
+                  </div>
+                </td>
+
               </tr>
-            </thead>
-            <tbody>
-              @for (e of etudiantsFiltres(); track e.id; let i = $index) {
-                <tr>
-                  <td class="td-num">{{ i + 1 }}</td>
-                  <td>
-                    <div class="stu-cell">
-                      <div class="stu-avatar">
-                        {{ e.nom?.charAt(0) }}
-                      </div>
-                      <div class="stu-name">{{ e.nom }}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="stu-name">{{ e.email }}</div>
-                  </td>
-                  <td>
-                    <span class="badge"
-                      [class]="getBadgeGroupe(e.groupes?.type)">
-                      {{ e.groupes?.nom || '—' }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="badge"
-                      [class]="getNiveauBadge(e.niveau)">
-                      {{ e.niveau || '—' }}
-                    </span>
-                  </td>
-                  <td class="td-date">
-                    {{ e.created_at | date:'dd/MM/yyyy' }}
-                  </td>
-                  <td>
-                    <div class="actions">
-                      <button
-                        class="action-btn btn-edit"
-                        (click)="ouvrirEdit(e)"
-                        title="تعديل">
-                        ✏️
-                      </button>
-                      <button
-                        class="action-btn btn-delete"
-                        (click)="confirmerSuppression(e)"
-                        title="حذف">
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
+
+            }
+          </tbody>
+        </table>
+
       </div>
+    }
+  </div>
 
     </div>
   </main>

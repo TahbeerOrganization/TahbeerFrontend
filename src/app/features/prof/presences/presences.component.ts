@@ -94,25 +94,44 @@ export class PresencesComponent implements OnInit {
   }
 
   // ── Changer statut d'un étudiant ───────────────
-  async setStatut(etudiant: any, statut: string) {
-    // Mettre à jour localement d'abord (UX rapide)
+    async setStatut(etudiant: any, statut: string) {
+    // Update local d'abord
     const updated = this.etudiants().map(e =>
       e.id === etudiant.id ? { ...e, statut } : e
     );
     this.etudiants.set(updated);
     this.calculerStats(updated);
 
-    // Sauvegarder dans Supabase
-    const { error } = await this.sb.client
-      .from('presences')
-      .upsert({
-        etudiant_id: etudiant.id,
-        date: this.selectedDate(),
-        statut: statut
-      }, { onConflict: 'etudiant_id,date' });
+    try {
+      // Vérifier si présence existe déjà
+      const { data: existing } = await this.sb.client
+        .from('presences')
+        .select('id')
+        .eq('etudiant_id', etudiant.id)
+        .eq('date', this.selectedDate())
+        .single();
 
-    if (error) {
-      this.errorMsg.set('خطأ في حفظ الحضور');
+      if (existing) {
+        // UPDATE
+        const { error } = await this.sb.client
+          .from('presences')
+          .update({ statut })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        // INSERT
+        const { error } = await this.sb.client
+          .from('presences')
+          .insert({
+            etudiant_id: etudiant.id,
+            date: this.selectedDate(),
+            statut: statut
+          });
+        if (error) throw error;
+      }
+    } catch (e: any) {
+      console.error('Erreur présence:', e);
+      this.errorMsg.set('خطأ: ' + e.message);
       setTimeout(() => this.errorMsg.set(''), 3000);
     }
   }
