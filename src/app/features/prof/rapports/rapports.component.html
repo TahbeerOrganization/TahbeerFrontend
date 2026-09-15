@@ -1,1040 +1,283 @@
-<div class="layout" dir="rtl">
+<div class="page-wrap" dir="rtl">
 
-  <!-- ═════════════ SIDEBAR ═════════════ -->
-  <app-sidebar activePage="rapports"></app-sidebar>
+    <app-sidebar activePage="rapports"></app-sidebar>
 
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">📊 التقارير والإحصائيات</div>
+      <div class="page-sub">بيانات حية من قاعدة البيانات</div>
+    </div>
+    <button class="btn-ghost" (click)="loadRapports()">🔄 تحديث</button>
+  </div>
 
-  <!-- ═════════════ MAIN ═════════════ -->
-  <main class="main">
+  @if (loading()) {
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <p>جاري تحميل البيانات...</p>
+    </div>
+  } @else {
 
-    <!-- ═════════════ TOPBAR ═════════════ -->
-    <div class="topbar">
+  <!-- ══ KPI STATS ═══════════════════════════════ -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-val">{{ totalEtudiants() }}</div>
+      <div class="kpi-label">إجمالي الطلاب</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📖</div>
+      <div class="kpi-val">{{ souratesMktmla() }}</div>
+      <div class="kpi-label">سور مكتملة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📝</div>
+      <div class="kpi-val">{{ totalAyat() }}</div>
+      <div class="kpi-label">آيات محفوظة</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-val">{{ moyennePresence() }}%</div>
+      <div class="kpi-label">معدل الحضور</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">⭐</div>
+      <div class="kpi-val">{{ moyenneEval() }}/20</div>
+      <div class="kpi-label">معدل التقييمات</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">🗂️</div>
+      <div class="kpi-val">{{ totalGroupes() }}</div>
+      <div class="kpi-label">المجموعات</div>
+    </div>
+  </div>
 
-      <div>
-        <div class="topbar-title">
-          📊 التقارير والإحصائيات
-        </div>
+  <!-- ══ DEUX COLONNES ══════════════════════════ -->
+  <div class="two-col">
 
-        <div class="topbar-sub">
-          نظرة شاملة على أداء الأكاديمية والطلاب
-        </div>
+    <!-- TOP ÉTUDIANTS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🏆 أفضل الطلاب</div>
+        <span style="font-size:11px;color:#888">حسب تقدم الحفظ والحضور والتقييم</span>
       </div>
 
-      <button
-        class="btn-ghost"
-        (click)="actualiser()"
-      >
-        🔄 تحديث
-      </button>
-
+      @if (topEtudiants().length === 0) {
+        <div class="empty-state">لا توجد بيانات بعد</div>
+      } @else {
+        <div class="top-list">
+          @for (e of topEtudiants(); track e.id; let i = $index) {
+            <div class="top-row" [class.top-podium]="i < 3">
+              <div class="top-medal">{{ getMedal(i) }}</div>
+              <div class="top-avatar">{{ e.nom?.charAt(0) }}</div>
+              <div class="top-info">
+                <div class="top-nom">{{ e.nom }}</div>
+                <div class="top-meta">
+                  {{ e.groupes?.nom }} ·
+                  {{ e.nb_mktmla }} سورة ·
+                  {{ e.taux_presence }}% حضور
+                </div>
+              </div>
+              <div class="top-score">
+                <div class="score-bar-bg">
+                  <div class="score-bar-fill"
+                    [style.width]="getBarWidth(e.score, topEtudiants()[0]?.score) + '%'">
+                  </div>
+                </div>
+                <span class="score-val">{{ e.score }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
     </div>
 
-
-    <!-- ═════════════ CONTENT ═════════════ -->
-    <div class="content">
-
-      <!-- ═════════════ MODE SELECTOR ═════════════ -->
-      <div class="report-toolbar">
-
-        <div class="report-tabs">
-
-          <button
-            class="report-tab"
-            [class.active]="mode() === 'global'"
-            (click)="afficherGlobal()"
-          >
-            🏫 التقرير العام
-          </button>
-
-          <button
-            class="report-tab"
-            [class.active]="mode() === 'etudiant'"
-            (click)="afficherEtudiant()"
-          >
-            👤 تقرير طالب
-          </button>
-
-        </div>
-
-
-        @if (mode() === 'etudiant') {
-
-          <select
-            class="filter-select student-select"
-            [value]="filtreEtudiant()"
-            (change)="changerEtudiant($any($event.target).value)"
-          >
-
-            <option value="">
-              اختر الطالب
-            </option>
-
-            @for (e of etudiants(); track e.id) {
-
-              <option [value]="e.id">
-                {{ e.nom }} — {{ e.groupe }}
-              </option>
-
-            }
-
-          </select>
-
-        }
-
-
-        <select
-          class="filter-select year-select"
-          [value]="annee()"
-          (change)="changerAnnee($any($event.target).value)"
-        >
-
-          <option value="2026">2026</option>
-          <option value="2027">2027</option>
-          <option value="2028">2028</option>
-
-        </select>
-
+    <!-- RÉPARTITION GROUPES -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🗂️ توزيع الطلاب حسب المجموعة</div>
       </div>
 
-
-      <!-- ═════════════ EMPTY STUDENT ═════════════ -->
-
-      @if (
-        mode() === 'etudiant' &&
-        !etudiantSelectionne()
-      ) {
-
-        <div class="card empty-state">
-
-          <div class="empty-icon">
-            👤
-          </div>
-
-          <h3>
-            اختر طالبًا
-          </h3>
-
-          <p>
-            اختر طالبًا لعرض تقريره التفصيلي
-            في الحفظ والحضور والأداء.
-          </p>
-
+      @if (repartitionGroupes().length === 0) {
+        <div class="empty-state">لا توجد مجموعات</div>
+      } @else {
+        <div class="groupes-chart">
+          @for (g of repartitionGroupes(); track g.id) {
+            <div class="gc-row">
+              <div class="gc-label">
+                <span class="gc-type-dot"
+                  [style.background]="getGroupeColor(g.type)">
+                </span>
+                {{ g.nom }}
+              </div>
+              <div class="gc-bar-wrap">
+                <div class="gc-bar-bg">
+                  <div class="gc-bar-fill"
+                    [style.width]="getBarWidth(g.nb_etudiants, totalEtudiants()) + '%'"
+                    [style.background]="getGroupeColor(g.type)">
+                  </div>
+                </div>
+                <span class="gc-count">{{ g.nb_etudiants }} طالب</span>
+              </div>
+            </div>
+          }
         </div>
 
+        <!-- Donut simple -->
+        <div class="donut-wrap">
+          @for (g of repartitionGroupes(); track g.id) {
+            <div class="donut-leg">
+              <div class="donut-dot" [style.background]="getGroupeColor(g.type)"></div>
+              <span>{{ g.nom }}</span>
+              <strong>
+                {{ getBarWidth(g.nb_etudiants, totalEtudiants()) }}%
+              </strong>
+            </div>
+          }
+        </div>
       }
-
-
-      @else {
-
-        <!-- ═════════════ REPORT HEADER ═════════════ -->
-
-        <div class="report-header">
-
-          @if (mode() === 'global') {
-
-            <div>
-
-              <h2>
-                🏫 التقرير العام للأكاديمية
-              </h2>
-
-              <p>
-                إحصائيات شاملة لجميع الطلاب
-                خلال سنة {{ annee() }}
-              </p>
-
-            </div>
-
-            <div class="report-header-icon">
-              🏫
-            </div>
-
-          }
-
-          @else {
-
-            <div class="selected-student">
-
-              <div class="student-big-avatar">
-                {{ etudiantSelectionne()?.nom?.charAt(0) }}
-              </div>
-
-              <div>
-
-                <h2>
-                  تقرير {{ etudiantSelectionne()?.nom }}
-                </h2>
-
-                <p>
-                  {{ etudiantSelectionne()?.groupe }}
-                  ·
-                  {{ etudiantSelectionne()?.niveau }}
-                </p>
-
-              </div>
-
-            </div>
-
-            <div class="report-header-icon">
-              👤
-            </div>
-
-          }
-
-        </div>
-
-
-        <!-- ═════════════ MAIN STATS ═════════════ -->
-
-        <div class="stats-grid">
-
-          <!-- STUDENTS -->
-
-          <div class="stat-card">
-
-            <div class="stat-icon purple">
-              👥
-            </div>
-
-            <div class="stat-info">
-
-              <span>
-                {{
-                  mode() === 'global'
-                    ? 'إجمالي الطلاب'
-                    : 'الطالب'
-                }}
-              </span>
-
-              <strong>
-                {{
-                  mode() === 'global'
-                    ? totalEtudiants()
-                    : etudiantSelectionne()?.nom
-                }}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <!-- HIFD -->
-
-          <div class="stat-card">
-
-            <div class="stat-icon blue">
-              📖
-            </div>
-
-            <div class="stat-info">
-
-              <span>
-                مجموع الآيات المحفوظة
-              </span>
-
-              <strong>
-                {{
-                  mode() === 'global'
-                    ? totalAyat()
-                    : studentAyat()
-                }}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <!-- PRESENCE -->
-
-          <div class="stat-card">
-
-            <div class="stat-icon green">
-              ✓
-            </div>
-
-            <div class="stat-info">
-
-              <span>
-                مجموع الحضور
-              </span>
-
-              <strong>
-                {{ totalPresence() }}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <!-- ABSENCE -->
-
-          <div class="stat-card">
-
-            <div class="stat-icon red">
-              !
-            </div>
-
-            <div class="stat-info">
-
-              <span>
-                مجموع الغياب
-              </span>
-
-              <strong>
-                {{ totalAbsence() }}
-              </strong>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <!-- ═════════════ ATTENDANCE SUMMARY ═════════════ -->
-        <!-- هادو دابا غادي يبانوا مباشرة تحت الـ 4 cards -->
-
-        <div class="stats-grid attendance-stats">
-
-          <!-- الحضور -->
-
-          <div class="mini-stat green-border">
-
-            <span class="mini-dot green"></span>
-
-            <div>
-
-              <span>
-                الحضور
-              </span>
-
-              <strong>
-                {{ totalPresence() }}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <!-- الغياب -->
-
-          <div class="mini-stat red-border">
-
-            <span class="mini-dot red"></span>
-
-            <div>
-
-              <span>
-                الغياب
-              </span>
-
-              <strong>
-                {{ totalAbsence() }}
-              </strong>
-
-            </div>
-
-          </div>
-
-
-          <!-- التأخر -->
-
-          <div class="mini-stat orange-border">
-
-            <span class="mini-dot orange"></span>
-
-            <div>
-
-              <span>
-                التأخر
-              </span>
-
-              <strong>
-                {{ totalRetard() }}
-              </strong>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <!-- ═════════════ GLOBAL CHARTS ═════════════ -->
-
-        @if (mode() === 'global') {
-
-          <div class="charts-grid">
-
-
-            <!-- GENDER -->
-
-            <div class="card chart-card">
-
-              <div class="card-header">
-
-                <div>
-
-                  <h3>
-                    👥 توزيع الطلاب
-                  </h3>
-
-                  <p>
-                    توزيع الطلاب حسب الفئة
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="gender-content">
-
-                <div
-                  class="gender-donut"
-                  [style.background]="
-                    'conic-gradient(' +
-                    '#1B6FA8 0 ' +
-                    genderPercent(totalHommes()) +
-                    '%, ' +
-
-                    '#D85A30 ' +
-                    genderPercent(totalHommes()) +
-                    '% ' +
-
-                    (
-                      genderPercent(totalHommes()) +
-                      genderPercent(totalFemmes())
-                    ) +
-
-                    '%, ' +
-
-                    '#8B5CF6 ' +
-
-                    (
-                      genderPercent(totalHommes()) +
-                      genderPercent(totalFemmes())
-                    ) +
-
-                    '% 100%)'
-                  "
-                >
-
-                  <div class="donut-center">
-
-                    <strong>
-                      {{ totalEtudiants() }}
-                    </strong>
-
-                    <span>
-                      طالب
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-                <div class="gender-legend">
-
-                  <div class="legend-item">
-
-                    <span class="legend-dot blue-dot"></span>
-
-                    <div>
-
-                      <strong>
-                        الرجال
-                      </strong>
-
-                      <small>
-                        {{ totalHommes() }}
-                        ·
-                        {{ genderPercent(totalHommes()) }}%
-                      </small>
-
-                    </div>
-
-                  </div>
-
-
-                  <div class="legend-item">
-
-                    <span class="legend-dot red-dot"></span>
-
-                    <div>
-
-                      <strong>
-                        النساء
-                      </strong>
-
-                      <small>
-                        {{ totalFemmes() }}
-                        ·
-                        {{ genderPercent(totalFemmes()) }}%
-                      </small>
-
-                    </div>
-
-                  </div>
-
-
-                  <div class="legend-item">
-
-                    <span class="legend-dot purple-dot"></span>
-
-                    <div>
-
-                      <strong>
-                        الأطفال
-                      </strong>
-
-                      <small>
-                        {{ totalEnfants() }}
-                        ·
-                        {{ genderPercent(totalEnfants()) }}%
-                      </small>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-            <!-- GROUPS -->
-
-            <div class="card chart-card">
-
-              <div class="card-header">
-
-                <div>
-
-                  <h3>
-                    👥 الطلاب حسب المجموعات
-                  </h3>
-
-                  <p>
-                    عدد الطلاب في كل مجموعة
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="horizontal-bars">
-
-                @for (
-                  g of groupesStats();
-                  track g.nom
-                ) {
-
-                  <div class="bar-row">
-
-                    <div class="bar-label">
-                      {{ g.nom }}
-                    </div>
-
-                    <div class="bar-track">
-
-                      <div
-                        class="bar-fill"
-                        [style.width]="
-                          getBarWidth(
-                            g.total,
-                            groupeMax()
-                          )
-                        "
-                      ></div>
-
-                    </div>
-
-                    <strong class="bar-value">
-                      {{ g.total }}
-                    </strong>
-
-                  </div>
-
-                }
-
-              </div>
-
-            </div>
-
-          </div>
-
-        }
-
-
-        <!-- ═════════════ HIFD CHART ═════════════ -->
-
-        <div class="card chart-card large-chart">
-
-          <div class="card-header">
-
-            <div>
-
-              <h3>
-                📖 تطور الحفظ
-              </h3>
-
-              <p>
-                تطور مجموع الآيات المحفوظة مع مرور الوقت
-              </p>
-
-            </div>
-
-            <div class="chart-badge blue-badge">
-              {{
-                mode() === 'global'
-                  ? totalAyat()
-                  : studentAyat()
-              }}
-              آية
-            </div>
-
-          </div>
-
-
-          @if (hifdTrend().length === 0) {
-
-            <div class="chart-empty">
-              لا توجد بيانات للحفظ
-            </div>
-
-          }
-
-          @else {
-
-            <div class="line-chart-wrap">
-
-              <svg
-                viewBox="0 0 600 260"
-                preserveAspectRatio="none"
-                class="line-chart"
-              >
-
-                <line
-                  x1="0"
-                  y1="40"
-                  x2="600"
-                  y2="40"
-                  class="grid-line"
-                />
-
-                <line
-                  x1="0"
-                  y1="90"
-                  x2="600"
-                  y2="90"
-                  class="grid-line"
-                />
-
-                <line
-                  x1="0"
-                  y1="140"
-                  x2="600"
-                  y2="140"
-                  class="grid-line"
-                />
-
-                <line
-                  x1="0"
-                  y1="190"
-                  x2="600"
-                  y2="190"
-                  class="grid-line"
-                />
-
-
-                <polygon
-                  [attr.points]="
-                    '0,220 ' +
-                    getLinePoints() +
-                    ' 600,220'
-                  "
-                  class="line-area"
-                />
-
-
-                <polyline
-                  [attr.points]="getLinePoints()"
-                  class="trend-line"
-                />
-
-
-                @for (
-                  p of hifdTrend();
-                  track $index
-                ) {
-
-                  <circle
-                    [attr.cx]="getPointX($index)"
-                    [attr.cy]="getPointY(p.total)"
-                    r="5"
-                    class="trend-point"
-                  />
-
-                }
-
-              </svg>
-
-
-              <div class="chart-dates">
-
-                @for (
-                  p of hifdTrend();
-                  track $index
-                ) {
-
-                  <span>
-                    {{ p.date }}
-                  </span>
-
-                }
-
-              </div>
-
-            </div>
-
-          }
-
-        </div>
-
-
-        <!-- ═════════════ STUDENT DETAILS ═════════════ -->
-
-        @if (mode() === 'etudiant') {
-
-          <div class="charts-grid">
-
-
-            <!-- EVALUATION -->
-
-            <div class="card chart-card">
-
-              <div class="card-header">
-
-                <div>
-
-                  <h3>
-                    ⭐ مستوى الحفظ
-                  </h3>
-
-                  <p>
-                    توزيع تقييمات الحفظ
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="evaluation-list">
-
-                <div class="evaluation-row">
-
-                  <span class="eval-dot excellent"></span>
-
-                  <span>
-                    ممتاز
-                  </span>
-
-                  <strong>
-                    {{ studentExcellent() }}
-                  </strong>
-
-                </div>
-
-
-                <div class="evaluation-row">
-
-                  <span class="eval-dot good"></span>
-
-                  <span>
-                    جيد
-                  </span>
-
-                  <strong>
-                    {{ studentBon() }}
-                  </strong>
-
-                </div>
-
-
-                <div class="evaluation-row">
-
-                  <span class="eval-dot average"></span>
-
-                  <span>
-                    يحتاج إلى متابعة
-                  </span>
-
-                  <strong>
-                    {{ studentRevision() }}
-                  </strong>
-
-                </div>
-
-              </div>
-
-            </div>
-
-
-            <!-- STUDENT SUMMARY -->
-
-            <div class="card chart-card">
-
-              <div class="card-header">
-
-                <div>
-
-                  <h3>
-                    📋 ملخص الطالب
-                  </h3>
-
-                  <p>
-                    المعلومات الأساسية
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="summary-list">
-
-                <div class="summary-row">
-
-                  <span>
-                    الاسم
-                  </span>
-
-                  <strong>
-                    {{ etudiantSelectionne()?.nom }}
-                  </strong>
-
-                </div>
-
-
-                <div class="summary-row">
-
-                  <span>
-                    المجموعة
-                  </span>
-
-                  <strong>
-                    {{ etudiantSelectionne()?.groupe }}
-                  </strong>
-
-                </div>
-
-
-                <div class="summary-row">
-
-                  <span>
-                    المستوى
-                  </span>
-
-                  <strong>
-                    {{ etudiantSelectionne()?.niveau }}
-                  </strong>
-
-                </div>
-
-
-                <div class="summary-row">
-
-                  <span>
-                    الآيات المحفوظة
-                  </span>
-
-                  <strong>
-                    {{ studentAyat() }}
-                  </strong>
-
-                </div>
-
-
-                <div class="summary-row">
-
-                  <span>
-                    الحضور
-                  </span>
-
-                  <strong class="text-green">
-                    {{ totalPresence() }}
-                  </strong>
-
-                </div>
-
-
-                <div class="summary-row">
-
-                  <span>
-                    الغياب
-                  </span>
-
-                  <strong class="text-red">
-                    {{ totalAbsence() }}
-                  </strong>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        }
-
-
-        <!-- ═════════════ PRESENCE CHART ═════════════ -->
-
-        <div class="card chart-card large-chart">
-
-          <div class="card-header">
-
-            <div>
-
-              <h3>
-                🕐 الحضور والغياب
-              </h3>
-
-              <p>
-                متابعة الحضور والغياب حسب التاريخ
-              </p>
-
-            </div>
-
-
-            <div class="presence-legend">
-
-              <span>
-                <i class="present"></i>
-                حاضر
-              </span>
-
-              <span>
-                <i class="absent"></i>
-                غائب
-              </span>
-
-              <span>
-                <i class="late"></i>
-                متأخر
-              </span>
-
-            </div>
-
-          </div>
-
-
-          @if (presenceDates().length === 0) {
-
-            <div class="chart-empty">
-              لا توجد بيانات للحضور
-            </div>
-
-          }
-
-          @else {
-
-            <div class="attendance-chart">
-
-              @for (
-                p of presenceDates();
-                track p.date
-              ) {
-
-                <div class="attendance-column">
-
-                  <div class="attendance-total">
-                    {{
-                      p.present +
-                      p.absent +
-                      p.late
-                    }}
-                  </div>
-
-
-                  <div class="attendance-bar">
-
-                    @if (p.present > 0) {
-
-                      <div
-                        class="attendance-segment present"
-                        [style.height]="
-                          getBarWidth(
-                            p.present,
-                            presenceMax()
-                          )
-                        "
-                      ></div>
-
-                    }
-
-
-                    @if (p.late > 0) {
-
-                      <div
-                        class="attendance-segment late"
-                        [style.height]="
-                          getBarWidth(
-                            p.late,
-                            presenceMax()
-                          )
-                        "
-                      ></div>
-
-                    }
-
-
-                    @if (p.absent > 0) {
-
-                      <div
-                        class="attendance-segment absent"
-                        [style.height]="
-                          getBarWidth(
-                            p.absent,
-                            presenceMax()
-                          )
-                        "
-                      ></div>
-
-                    }
-
-                  </div>
-
-
-                  <span class="attendance-date">
-                    {{ formatShortDate(p.date) }}
-                  </span>
-
-                </div>
-
-              }
-
-            </div>
-
-          }
-
-        </div>
-
-      }
-
     </div>
 
-  </main>
+  </div>
+
+  <!-- ══ PRÉSENCE PAR SEMAINE ════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📅 معدل الحضور الأسبوعي</div>
+      <span style="font-size:11px;color:#888">آخر ٦ أسابيع</span>
+    </div>
+
+    @if (presenceParSemaine().length === 0) {
+      <div class="empty-state">لا توجد بيانات حضور بعد</div>
+    } @else {
+      <div class="bar-chart">
+        @for (s of presenceParSemaine(); track s.label) {
+          <div class="bc-col">
+            <div class="bc-bars">
+              <div class="bc-bar-wrap">
+                <div class="bc-bar bc-bar-green"
+                  [style.height]="getBarWidth(s.present, s.total) + '%'"
+                  [title]="'حاضر: ' + s.present">
+                </div>
+              </div>
+              <div class="bc-bar-wrap">
+                <div class="bc-bar bc-bar-red"
+                  [style.height]="getBarWidth(s.absent, s.total) + '%'"
+                  [title]="'غائب: ' + s.absent">
+                </div>
+              </div>
+            </div>
+            <div class="bc-pct">
+              {{ s.total > 0 ? getBarWidth(s.present, s.total) : 0 }}%
+            </div>
+            <div class="bc-label">{{ s.label }}</div>
+          </div>
+        }
+      </div>
+      <div class="chart-legend">
+        <div class="cl-item">
+          <div class="cl-dot" style="background:#1D9E75"></div> حاضر
+        </div>
+        <div class="cl-item">
+          <div class="cl-dot" style="background:#D85A30"></div> غائب
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- ══ PROGRESSION SOURATES ════════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📖 تقدم حفظ السور</div>
+      <span style="font-size:11px;color:#888">السور التي بدأ بها الطلاب</span>
+    </div>
+
+    @if (progressionSourates().length === 0) {
+      <div class="empty-state">لم يبدأ أي طالب بعد</div>
+    } @else {
+      <div class="sourates-chart">
+        @for (s of progressionSourates(); track s.id) {
+          <div class="sc-row">
+            <div class="sc-label">
+              <span class="sc-arabic">{{ s.nom_arabe }}</span>
+              <span class="sc-nom">{{ s.nom }}</span>
+            </div>
+            <div class="sc-bars">
+              <div class="sc-bar-bg">
+                <div class="sc-bar-fill sc-mktmla"
+                  [style.width]="s.pct_mktmla + '%'"
+                  [title]="'مكتملة: ' + s.nb_mktmla">
+                </div>
+              </div>
+              <div class="sc-info">
+                <span class="badge badge-green">{{ s.nb_mktmla }} مكتملة</span>
+                @if (s.nb_jariya > 0) {
+                  <span class="badge badge-blue">{{ s.nb_jariya }} جارية</span>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ══ DERNIÈRES ÉVALUATIONS ══════════════════ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">⭐ آخر التقييمات</div>
+    </div>
+
+    @if (dernieresEvals().length === 0) {
+      <div class="empty-state">لا توجد تقييمات بعد</div>
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>الطالب</th>
+            <th>السورة</th>
+            <th>النوع</th>
+            <th>الدرجة</th>
+            <th>التقدير</th>
+            <th>التاريخ</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (ev of dernieresEvals(); track ev.id) {
+            <tr>
+              <td>
+                <div class="stu-cell">
+                  <div class="stu-av">{{ ev.profiles?.nom?.charAt(0) }}</div>
+                  {{ ev.profiles?.nom }}
+                </div>
+              </td>
+              <td>{{ ev.sourates?.nom || '—' }}</td>
+              <td><span class="badge badge-blue">{{ ev.type }}</span></td>
+              <td>
+                <span class="note-badge"
+                  [class]="getNoteClass(ev.note, ev.note_max)">
+                  {{ ev.note }}/{{ ev.note_max }}
+                </span>
+              </td>
+              <td>
+                <span class="badge"
+                  [class.badge-green]="ev.note/ev.note_max >= 0.75"
+                  [class.badge-amber]="ev.note/ev.note_max >= 0.5 && ev.note/ev.note_max < 0.75"
+                  [class.badge-red]="ev.note/ev.note_max < 0.5">
+                  {{ ev.note/ev.note_max >= 0.85 ? 'ممتاز' :
+                     ev.note/ev.note_max >= 0.75 ? 'جيد جداً' :
+                     ev.note/ev.note_max >= 0.65 ? 'جيد' :
+                     ev.note/ev.note_max >= 0.5  ? 'مقبول' : 'ضعيف' }}
+                </span>
+              </td>
+              <td style="font-size:12px;color:#888">{{ ev.date }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  } <!-- end @else loading -->
 
 </div>

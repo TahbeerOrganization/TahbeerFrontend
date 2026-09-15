@@ -1,12 +1,1177 @@
 <div class="layout" dir="rtl">
 
   <!-- ══ SIDEBAR ══════════════════════════════════ -->
-  <app-sidebar activePage="etudiants"></app-sidebar>
-  <!-- ══ MAIN ══════════════════════════════════════ -->
-   <main class="main">
+  <app-sidebar activePage="devoirs"></app-sidebar>
 
-    <!-- Topbar -->
+
+  <!-- ══ MAIN ═════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- TOPBAR -->
     <div class="topbar">
+
       <div>
-      test
+        <div class="topbar-title">
+          📝 الواجبات والتمارين
+        </div>
+
+        <div class="topbar-sub">
+          {{ devoirs().length }} واجب
+        </div>
+      </div>
+
+      <button
+        class="btn-primary"
+        (click)="ouvrirAjoutDevoir()">
+
+        + إضافة واجب
+
+      </button>
+
     </div>
+
+
+    <div class="content">
+
+      <!-- SUCCESS -->
+      @if (successMsg()) {
+
+        <div class="alert alert-success">
+          {{ successMsg() }}
+        </div>
+
+      }
+
+
+      <!-- ERROR -->
+      @if (errorMsg()) {
+
+        <div class="alert alert-error">
+          ⚠️ {{ errorMsg() }}
+        </div>
+
+      }
+
+
+      <!-- ══ STATS ═════════════════════════════════ -->
+
+      <div class="stats-grid">
+
+        <div class="stat-card">
+
+          <div class="stat-icon blue">
+            📝
+          </div>
+
+          <div>
+            <div class="stat-label">
+              جميع الواجبات
+            </div>
+
+            <div class="stat-value">
+              {{ devoirs().length }}
+            </div>
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-icon green">
+            🎥
+          </div>
+
+          <div>
+            <div class="stat-label">
+              حصص مباشرة
+            </div>
+
+            <div class="stat-value">
+              {{ devoirsAvecMeet() }}
+            </div>
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-icon amber">
+            ✏️
+          </div>
+
+          <div>
+            <div class="stat-label">
+              تمارين
+            </div>
+
+            <div class="stat-value">
+              {{ devoirsAvecExercice() }}
+            </div>
+          </div>
+
+        </div>
+
+
+        <div class="stat-card">
+
+          <div class="stat-icon purple">
+            📎
+          </div>
+
+          <div>
+            <div class="stat-label">
+              ملفات
+            </div>
+
+            <div class="stat-value">
+              {{ devoirsAvecFichier() }}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ══ FILTERS ═══════════════════════════════ -->
+
+      <div class="filters-bar">
+
+        <input
+          class="search-input"
+          placeholder="🔍 ابحث عن واجب..."
+          [value]="searchQuery()"
+          (input)="onSearch($any($event.target).value)"
+        />
+
+
+        <select
+          class="filter-select"
+          [value]="filterType()"
+          (change)="onFilterType($any($event.target).value)">
+
+          <option value="all">
+            جميع الواجبات
+          </option>
+
+          <option value="meet">
+            🎥 حصص مباشرة
+          </option>
+
+          <option value="plan">
+            📝 خطط
+          </option>
+
+          <option value="exercise">
+            ✏️ تمارين
+          </option>
+
+          <option value="file">
+            📎 ملفات
+          </option>
+
+        </select>
+
+
+        <button
+          class="btn-ghost"
+          (click)="loadAll()">
+
+          🔄 تحديث
+
+        </button>
+
+      </div>
+
+
+      <!-- ══ LOADING ═══════════════════════════════ -->
+
+      @if (loading()) {
+
+        <div class="card">
+
+          <div class="loading-wrap">
+
+            <div class="spinner"></div>
+
+            <p>
+              جاري التحميل...
+            </p>
+
+          </div>
+
+        </div>
+
+      }
+
+
+      <!-- ══ EMPTY ═════════════════════════════════ -->
+
+      @else if (devoirsFiltres().length === 0) {
+
+        <div class="card">
+
+          <div class="empty-state">
+
+            <div class="empty-icon">
+              📝
+            </div>
+
+            <p>
+              لا توجد واجبات
+            </p>
+
+            <button
+              class="btn-primary"
+              (click)="ouvrirAjoutDevoir()">
+
+              + إضافة أول واجب
+
+            </button>
+
+          </div>
+
+        </div>
+
+      }
+
+
+      <!-- ══ DEVOIRS ══════════════════════════════ -->
+
+      @else {
+
+        <div class="devoirs-list">
+
+          @for (
+            devoir of devoirsFiltres();
+            track devoir.id
+          ) {
+
+            <div class="devoir-card">
+
+              <!-- HEADER -->
+
+              <div class="devoir-header">
+
+                <div class="devoir-main">
+
+                  <div class="devoir-icon">
+                    {{ devoir.icon || '📝' }}
+                  </div>
+
+                  <div class="devoir-info">
+
+                    <div class="devoir-title">
+                      {{ devoir.titre }}
+                    </div>
+
+                    <div class="devoir-date">
+                      📅
+                      {{ formatDate(devoir.dateLimite) }}
+                    </div>
+
+                  </div>
+
+                </div>
+
+
+                <div class="devoir-actions">
+
+                  <button
+                    class="action-btn btn-edit"
+                    title="تعديل"
+                    (click)="ouvrirEditDevoir(devoir)">
+
+                    ✏️
+
+                  </button>
+
+
+                  <button
+                    class="action-btn btn-delete"
+                    title="حذف"
+                    (click)="confirmerSuppression(devoir)">
+
+                    🗑️
+
+                  </button>
+
+                </div>
+
+              </div>
+
+
+              <!-- DESCRIPTION -->
+
+              @if (devoir.description) {
+
+                <div class="devoir-description">
+
+                  {{ devoir.description }}
+
+                </div>
+
+              }
+
+
+              <!-- ══ CONTENT OPTIONS ═══════════════ -->
+
+              <div class="devoir-content">
+
+
+                <!-- GOOGLE MEET -->
+
+                @if (devoir.meetUrl) {
+
+                  <div class="content-box meet-box">
+
+                    <div class="content-box-header">
+
+                      <div class="content-title">
+
+                        <span class="content-icon">
+                          🎥
+                        </span>
+
+                        <span>
+                          حصة مباشرة
+                        </span>
+
+                      </div>
+
+                      <span class="content-badge meet-badge">
+                        Google Meet
+                      </span>
+
+                    </div>
+
+
+                    <div class="meet-info">
+
+                      @if (devoir.meetDate) {
+
+                        <span>
+                          📅
+                          {{ formatDate(devoir.meetDate) }}
+                        </span>
+
+                      }
+
+                      @if (devoir.meetTime) {
+
+                        <span>
+                          🕐
+                          {{ devoir.meetTime }}
+                        </span>
+
+                      }
+
+                    </div>
+
+
+                    <a
+                      class="meet-button"
+                      [href]="devoir.meetUrl"
+                      target="_blank"
+                      rel="noopener noreferrer">
+
+                      🔗 الدخول إلى Google Meet
+
+                    </a>
+
+                  </div>
+
+                }
+
+
+                <!-- PLAN -->
+
+                @if (devoir.plan) {
+
+                  <div class="content-box plan-box">
+
+                    <div class="content-box-header">
+
+                      <div class="content-title">
+
+                        <span class="content-icon">
+                          📝
+                        </span>
+
+                        <span>
+                          خطة الحصة
+                        </span>
+
+                      </div>
+
+                    </div>
+
+
+                    <div class="plan-content">
+
+                      {{ devoir.plan }}
+
+                    </div>
+
+                  </div>
+
+                }
+
+
+                <!-- EXERCICE -->
+
+                @if (devoir.exercice) {
+
+                  <div class="content-box exercise-box">
+
+                    <div class="content-box-header">
+
+                      <div class="content-title">
+
+                        <span class="content-icon">
+                          ✏️
+                        </span>
+
+                        <span>
+                          التمرين
+                        </span>
+
+                      </div>
+
+                    </div>
+
+
+                    <div class="exercise-content">
+
+                      {{ devoir.exercice }}
+
+                    </div>
+
+                  </div>
+
+                }
+
+
+                <!-- FILE -->
+
+                @if (devoir.fichierUrl) {
+
+                  <div class="content-box file-box">
+
+                    <div class="content-box-header">
+
+                      <div class="content-title">
+
+                        <span class="content-icon">
+                          📎
+                        </span>
+
+                        <span>
+                          ملف مرفق
+                        </span>
+
+                      </div>
+
+                    </div>
+
+
+                    <a
+                      class="file-button"
+                      [href]="devoir.fichierUrl"
+                      target="_blank"
+                      rel="noopener noreferrer">
+
+                      📄 فتح الملف
+
+                    </a>
+
+                  </div>
+
+                }
+
+
+                <!-- NO EXTRA CONTENT -->
+
+                @if (
+                  !devoir.meetUrl &&
+                  !devoir.plan &&
+                  !devoir.exercice &&
+                  !devoir.fichierUrl
+                ) {
+
+                  <div class="no-content">
+
+                    لا توجد إضافات لهذا الواجب
+
+                  </div>
+
+                }
+
+              </div>
+
+
+              <!-- FOOTER -->
+
+              <div class="devoir-footer">
+
+                <div class="footer-info">
+
+                  @if (devoir.classeNom) {
+
+                    <span class="badge badge-blue">
+                      📚 {{ devoir.classeNom }}
+                    </span>
+
+                  }
+
+                  @if (devoir.groupeNom) {
+
+                    <span class="badge badge-gray">
+                      👥 {{ devoir.groupeNom }}
+                    </span>
+
+                  }
+
+                </div>
+
+
+                <button
+                  class="btn-ghost btn-sm"
+                  (click)="voirDevoir(devoir)">
+
+                  👁️ التفاصيل
+
+                </button>
+
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+      }
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     MODAL AJOUT / EDIT DEVOIR
+════════════════════════════════════════════════ -->
+
+@if (showDevoirModal()) {
+
+  <div
+    class="modal-overlay"
+    (click)="fermerDevoirModal()">
+
+    <div
+      class="modal"
+      (click)="$event.stopPropagation()">
+
+
+      <!-- HEADER -->
+
+      <div class="modal-header">
+
+        <h3>
+
+          @if (modeEdit()) {
+            ✏️ تعديل الواجب
+          } @else {
+            + إضافة واجب جديد
+          }
+
+        </h3>
+
+
+        <button
+          class="modal-close"
+          (click)="fermerDevoirModal()">
+
+          ✕
+
+        </button>
+
+      </div>
+
+
+      <!-- BODY -->
+
+      <div class="modal-body">
+
+        @if (errorMsg()) {
+
+          <div class="alert alert-error">
+            ⚠️ {{ errorMsg() }}
+          </div>
+
+        }
+
+
+        <!-- TITRE -->
+
+        <div class="form-group">
+
+          <label>
+            عنوان الواجب
+            <span class="required">*</span>
+          </label>
+
+          <input
+            class="form-input"
+            placeholder="مثال: حفظ سورة الكهف"
+            [value]="devoirForm().titre"
+            (input)="updateDevoirForm(
+              'titre',
+              $any($event.target).value
+            )"
+          />
+
+        </div>
+
+
+        <!-- DESCRIPTION -->
+
+        <div class="form-group">
+
+          <label>
+            الوصف
+          </label>
+
+          <textarea
+            class="form-input"
+            rows="3"
+            placeholder="وصف مختصر للواجب..."
+            [value]="devoirForm().description"
+            (input)="updateDevoirForm(
+              'description',
+              $any($event.target).value
+            )">
+          </textarea>
+
+        </div>
+
+
+        <!-- DATE -->
+
+        <div class="form-row">
+
+          <div class="form-group">
+
+            <label>
+              تاريخ التسليم
+            </label>
+
+            <input
+              type="date"
+              class="form-input"
+              [value]="devoirForm().dateLimite"
+              (input)="updateDevoirForm(
+                'dateLimite',
+                $any($event.target).value
+              )"
+            />
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label>
+              المجموعة
+            </label>
+
+            <select
+              class="form-input"
+              [value]="devoirForm().groupeId"
+              (change)="updateDevoirForm(
+                'groupeId',
+                $any($event.target).value
+              )">
+
+              <option value="">
+                جميع المجموعات
+              </option>
+
+              @for (
+                groupe of groupes();
+                track groupe.id
+              ) {
+
+                <option [value]="groupe.id">
+
+                  {{ groupe.nom }}
+
+                </option>
+
+              }
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+        <!-- ══ OPTIONAL CONTENT ═════════════════ -->
+
+        <div class="section-divider">
+
+          <div class="section-title">
+            ➕ محتوى إضافي
+          </div>
+
+          <div class="section-subtitle">
+            يمكنك إضافة واحد أو أكثر من هذه العناصر
+          </div>
+
+        </div>
+
+
+        <!-- MEET -->
+
+        <div class="optional-section">
+
+          <label class="check-row">
+
+            <input
+              type="checkbox"
+              [checked]="devoirForm().hasMeet"
+              (change)="toggleOptional(
+                'hasMeet',
+                $any($event.target).checked
+              )"
+            />
+
+            <span class="check-custom"></span>
+
+            <span class="check-content">
+
+              <strong>
+                🎥 حصة مباشرة
+              </strong>
+
+              <small>
+                إضافة رابط Google Meet
+              </small>
+
+            </span>
+
+          </label>
+
+
+          @if (devoirForm().hasMeet) {
+
+            <div class="optional-body">
+
+              <div class="form-group">
+
+                <label>
+                  رابط Google Meet
+                  <span class="required">*</span>
+                </label>
+
+                <input
+                  type="url"
+                  class="form-input"
+                  dir="ltr"
+                  placeholder="https://meet.google.com/..."
+                  [value]="devoirForm().meetUrl"
+                  (input)="updateDevoirForm(
+                    'meetUrl',
+                    $any($event.target).value
+                  )"
+                />
+
+              </div>
+
+
+              <div class="form-row">
+
+                <div class="form-group">
+
+                  <label>
+                    تاريخ الحصة
+                  </label>
+
+                  <input
+                    type="date"
+                    class="form-input"
+                    [value]="devoirForm().meetDate"
+                    (input)="updateDevoirForm(
+                      'meetDate',
+                      $any($event.target).value
+                    )"
+                  />
+
+                </div>
+
+
+                <div class="form-group">
+
+                  <label>
+                    وقت الحصة
+                  </label>
+
+                  <input
+                    type="time"
+                    class="form-input"
+                    [value]="devoirForm().meetTime"
+                    (input)="updateDevoirForm(
+                      'meetTime',
+                      $any($event.target).value
+                    )"
+                  />
+
+                </div>
+
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+
+        <!-- PLAN -->
+
+        <div class="optional-section">
+
+          <label class="check-row">
+
+            <input
+              type="checkbox"
+              [checked]="devoirForm().hasPlan"
+              (change)="toggleOptional(
+                'hasPlan',
+                $any($event.target).checked
+              )"
+            />
+
+            <span class="check-custom"></span>
+
+            <span class="check-content">
+
+              <strong>
+                📝 خطة الحصة
+              </strong>
+
+              <small>
+                أضف خطوات أو برنامج الحصة
+              </small>
+
+            </span>
+
+          </label>
+
+
+          @if (devoirForm().hasPlan) {
+
+            <div class="optional-body">
+
+              <div class="form-group">
+
+                <label>
+                  الخطة
+                </label>
+
+                <textarea
+                  class="form-input"
+                  rows="4"
+                  placeholder="مثال:
+1. مراجعة الحفظ السابق
+2. حفظ الآيات 1 إلى 10
+3. تسميع جماعي..."
+                  [value]="devoirForm().plan"
+                  (input)="updateDevoirForm(
+                    'plan',
+                    $any($event.target).value
+                  )">
+                </textarea>
+
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+
+        <!-- EXERCICE -->
+
+        <div class="optional-section">
+
+          <label class="check-row">
+
+            <input
+              type="checkbox"
+              [checked]="devoirForm().hasExercice"
+              (change)="toggleOptional(
+                'hasExercice',
+                $any($event.target).checked
+              )"
+            />
+
+            <span class="check-custom"></span>
+
+            <span class="check-content">
+
+              <strong>
+                ✏️ تمرين
+              </strong>
+
+              <small>
+                أضف تمريناً للطلاب
+              </small>
+
+            </span>
+
+          </label>
+
+
+          @if (devoirForm().hasExercice) {
+
+            <div class="optional-body">
+
+              <div class="form-group">
+
+                <label>
+                  نص التمرين
+                </label>
+
+                <textarea
+                  class="form-input"
+                  rows="5"
+                  placeholder="مثال:
+قم بتسجيل تسميع سورة الكهف من الآية 1 إلى 10..."
+                  [value]="devoirForm().exercice"
+                  (input)="updateDevoirForm(
+                    'exercice',
+                    $any($event.target).value
+                  )">
+                </textarea>
+
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+
+        <!-- FILE -->
+
+        <div class="optional-section">
+
+          <label class="check-row">
+
+            <input
+              type="checkbox"
+              [checked]="devoirForm().hasFichier"
+              (change)="toggleOptional(
+                'hasFichier',
+                $any($event.target).checked
+              )"
+            />
+
+            <span class="check-custom"></span>
+
+            <span class="check-content">
+
+              <strong>
+                📎 ملف مرفق
+              </strong>
+
+              <small>
+                أضف رابط PDF أو ملف
+              </small>
+
+            </span>
+
+          </label>
+
+
+          @if (devoirForm().hasFichier) {
+
+            <div class="optional-body">
+
+              <div class="form-group">
+
+                <label>
+                  رابط الملف
+                </label>
+
+                <input
+                  type="url"
+                  class="form-input"
+                  dir="ltr"
+                  placeholder="https://..."
+                  [value]="devoirForm().fichierUrl"
+                  (input)="updateDevoirForm(
+                    'fichierUrl',
+                    $any($event.target).value
+                  )"
+                />
+
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+      </div>
+
+
+      <!-- FOOTER -->
+
+      <div class="modal-footer">
+
+        <button
+          class="btn-ghost"
+          (click)="fermerDevoirModal()">
+
+          إلغاء
+
+        </button>
+
+
+        <button
+          class="btn-primary"
+          (click)="soumettreDevoir()"
+          [disabled]="formLoading()">
+
+          @if (formLoading()) {
+
+            <span class="spinner-sm"></span>
+
+            جاري الحفظ...
+
+          } @else {
+
+            @if (modeEdit()) {
+              💾 حفظ التعديلات
+            } @else {
+              + إضافة الواجب
+            }
+
+          }
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+}
+
+
+<!-- ═══════════════════════════════════════════════
+     DELETE MODAL
+════════════════════════════════════════════════ -->
+
+@if (showDeleteModal()) {
+
+  <div
+    class="modal-overlay"
+    (click)="showDeleteModal.set(false)">
+
+    <div
+      class="modal modal-sm"
+      (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+
+        <h3>
+          🗑️ تأكيد الحذف
+        </h3>
+
+        <button
+          class="modal-close"
+          (click)="showDeleteModal.set(false)">
+
+          ✕
+
+        </button>
+
+      </div>
+
+
+      <div class="modal-body">
+
+        <div class="delete-confirm">
+
+          <div class="delete-icon">
+            ⚠️
+          </div>
+
+          <p>
+
+            هل أنت متأكد من حذف الواجب
+
+            <strong>
+              {{ devoirToDelete()?.titre }}
+            </strong>؟
+
+          </p>
+
+          <p class="delete-warning">
+
+            سيتم حذف الواجب وجميع المحتويات المرتبطة به.
+
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="modal-footer">
+
+        <button
+          class="btn-ghost"
+          (click)="showDeleteModal.set(false)">
+
+          إلغاء
+
+        </button>
+
+
+        <button
+          class="btn-danger"
+          (click)="supprimerDevoir()"
+          [disabled]="formLoading()">
+
+          @if (formLoading()) {
+
+            جاري الحذف...
+
+          } @else {
+
+            🗑️ نعم، احذف
+
+          }
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+}
