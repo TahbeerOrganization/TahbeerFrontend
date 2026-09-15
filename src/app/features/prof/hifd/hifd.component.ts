@@ -65,7 +65,6 @@ interface Hifd {
 
   imports: [
     CommonModule,
-    RouterLink,
     SidebarComponent
   ],
 

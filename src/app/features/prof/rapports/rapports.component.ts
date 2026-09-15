@@ -1,758 +1,298 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { SupabaseService } from '../../../core/services/supabase.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { SidebarComponent } from '../sidebar/sidebar.component';
-
-interface Etudiant {
-  id: number;
-  nom: string;
-  groupe: string;
-  sexe: 'رجل' | 'امرأة' | 'طفل';
-  niveau: 'مبتدئ' | 'متوسط' | 'متقدم';
-}
-
-interface HifdRecord {
-  id: number;
-  etudiant_id: number;
-  sourate: string;
-  nombre_ayat: number;
-  evaluation: 'ممتاز' | 'جيد' | 'متوسط' | 'ضعيف';
-  date: string;
-}
-
-interface PresenceRecord {
-  id: number;
-  etudiant_id: number;
-  date: string;
-  statut: 'حاضر' | 'غائب' | 'متأخر';
-}
 
 @Component({
   selector: 'app-rapports',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    SidebarComponent
-  ],
+  imports: [CommonModule, FormsModule, SidebarComponent],
   templateUrl: './rapports.component.html',
   styleUrl: './rapports.component.css'
 })
-export class RapportsComponent {
-
-  /* ═══════════════════════════════════════════════
-     STATE
-  ═══════════════════════════════════════════════ */
-
-  mode = signal<'global' | 'etudiant'>('global');
-
-  filtreEtudiant = signal('');
-
-  annee = signal('2026');
-
-  loading = signal(false);
-
-
-  /* ═══════════════════════════════════════════════
-     ETUDIANTS
-  ═══════════════════════════════════════════════ */
-
-  etudiants = signal<Etudiant[]>([
-    {
-      id: 1,
-      nom: 'أحمد محمد',
-      groupe: 'المجموعة أ',
-      sexe: 'رجل',
-      niveau: 'متقدم'
-    },
-    {
-      id: 2,
-      nom: 'فاطمة الزهراء',
-      groupe: 'المجموعة أ',
-      sexe: 'امرأة',
-      niveau: 'متوسط'
-    },
-    {
-      id: 3,
-      nom: 'يوسف',
-      groupe: 'مجموعة الأطفال',
-      sexe: 'طفل',
-      niveau: 'مبتدئ'
-    },
-    {
-      id: 4,
-      nom: 'مريم',
-      groupe: 'مجموعة الأطفال',
-      sexe: 'طفل',
-      niveau: 'مبتدئ'
-    },
-    {
-      id: 5,
-      nom: 'عبد الرحمن',
-      groupe: 'المجموعة ب',
-      sexe: 'رجل',
-      niveau: 'متوسط'
-    },
-    {
-      id: 6,
-      nom: 'خديجة',
-      groupe: 'المجموعة ب',
-      sexe: 'امرأة',
-      niveau: 'متقدم'
-    }
-  ]);
-
-
-  /* ═══════════════════════════════════════════════
-     HIFD
-  ═══════════════════════════════════════════════ */
-
-  hifd = signal<HifdRecord[]>([
-    {
-      id: 1,
-      etudiant_id: 1,
-      sourate: 'البقرة',
-      nombre_ayat: 10,
-      evaluation: 'ممتاز',
-      date: '2026-09-01'
-    },
-    {
-      id: 2,
-      etudiant_id: 1,
-      sourate: 'البقرة',
-      nombre_ayat: 15,
-      evaluation: 'ممتاز',
-      date: '2026-09-05'
-    },
-    {
-      id: 3,
-      etudiant_id: 1,
-      sourate: 'آل عمران',
-      nombre_ayat: 12,
-      evaluation: 'جيد',
-      date: '2026-09-10'
-    },
-
-    {
-      id: 4,
-      etudiant_id: 2,
-      sourate: 'الفاتحة',
-      nombre_ayat: 7,
-      evaluation: 'جيد',
-      date: '2026-09-01'
-    },
-    {
-      id: 5,
-      etudiant_id: 2,
-      sourate: 'البقرة',
-      nombre_ayat: 8,
-      evaluation: 'ممتاز',
-      date: '2026-09-08'
-    },
-
-    {
-      id: 6,
-      etudiant_id: 3,
-      sourate: 'الفاتحة',
-      nombre_ayat: 7,
-      evaluation: 'متوسط',
-      date: '2026-09-02'
-    },
-    {
-      id: 7,
-      etudiant_id: 3,
-      sourate: 'الإخلاص',
-      nombre_ayat: 4,
-      evaluation: 'جيد',
-      date: '2026-09-07'
-    },
-
-    {
-      id: 8,
-      etudiant_id: 5,
-      sourate: 'النساء',
-      nombre_ayat: 14,
-      evaluation: 'ممتاز',
-      date: '2026-09-03'
-    },
-    {
-      id: 9,
-      etudiant_id: 6,
-      sourate: 'يس',
-      nombre_ayat: 12,
-      evaluation: 'ممتاز',
-      date: '2026-09-04'
-    }
-  ]);
-
-
-  /* ═══════════════════════════════════════════════
-     PRESENCE
-  ═══════════════════════════════════════════════ */
-
-  presences = signal<PresenceRecord[]>([
-    {
-      id: 1,
-      etudiant_id: 1,
-      date: '2026-09-01',
-      statut: 'حاضر'
-    },
-    {
-      id: 2,
-      etudiant_id: 1,
-      date: '2026-09-02',
-      statut: 'حاضر'
-    },
-    {
-      id: 3,
-      etudiant_id: 1,
-      date: '2026-09-03',
-      statut: 'غائب'
-    },
-    {
-      id: 4,
-      etudiant_id: 1,
-      date: '2026-09-04',
-      statut: 'حاضر'
-    },
-    {
-      id: 5,
-      etudiant_id: 1,
-      date: '2026-09-05',
-      statut: 'متأخر'
-    },
-
-    {
-      id: 6,
-      etudiant_id: 2,
-      date: '2026-09-01',
-      statut: 'حاضر'
-    },
-    {
-      id: 7,
-      etudiant_id: 2,
-      date: '2026-09-02',
-      statut: 'غائب'
-    },
-    {
-      id: 8,
-      etudiant_id: 2,
-      date: '2026-09-03',
-      statut: 'حاضر'
-    },
-    {
-      id: 9,
-      etudiant_id: 2,
-      date: '2026-09-04',
-      statut: 'حاضر'
-    },
-
-    {
-      id: 10,
-      etudiant_id: 3,
-      date: '2026-09-01',
-      statut: 'حاضر'
-    },
-    {
-      id: 11,
-      etudiant_id: 3,
-      date: '2026-09-02',
-      statut: 'حاضر'
-    },
-    {
-      id: 12,
-      etudiant_id: 3,
-      date: '2026-09-03',
-      statut: 'حاضر'
-    }
-  ]);
-
-
-  /* ═══════════════════════════════════════════════
-     SELECTED STUDENT
-  ═══════════════════════════════════════════════ */
-
-  etudiantSelectionne = computed(() => {
-
-    const id = Number(this.filtreEtudiant());
-
-    if (!id) {
-      return null;
-    }
-
-    return this.etudiants().find(e => e.id === id) || null;
-  });
-
-
-  /* ═══════════════════════════════════════════════
-     CURRENT HIFD
-  ═══════════════════════════════════════════════ */
-
-  hifdActuel = computed(() => {
-
-    const id = Number(this.filtreEtudiant());
-
-    if (this.mode() === 'global' || !id) {
-      return this.hifd();
-    }
-
-    return this.hifd().filter(
-      h => h.etudiant_id === id
-    );
-  });
-
-
-  /* ═══════════════════════════════════════════════
-     CURRENT PRESENCE
-  ═══════════════════════════════════════════════ */
-
-  presenceActuelle = computed(() => {
-
-    const id = Number(this.filtreEtudiant());
-
-    if (this.mode() === 'global' || !id) {
-      return this.presences();
-    }
-
-    return this.presences().filter(
-      p => p.etudiant_id === id
-    );
-  });
-
-
-  /* ═══════════════════════════════════════════════
-     GLOBAL STATS
-  ═══════════════════════════════════════════════ */
-
-  totalEtudiants = computed(() =>
-    this.etudiants().length
-  );
-
-  totalHommes = computed(() =>
-    this.etudiants().filter(
-      e => e.sexe === 'رجل'
-    ).length
-  );
-
-  totalFemmes = computed(() =>
-    this.etudiants().filter(
-      e => e.sexe === 'امرأة'
-    ).length
-  );
-
-  totalEnfants = computed(() =>
-    this.etudiants().filter(
-      e => e.sexe === 'طفل'
-    ).length
-  );
-
-  totalAyat = computed(() =>
-    this.hifdActuel().reduce(
-      (total, h) => total + h.nombre_ayat,
-      0
-    )
-  );
-
-  totalPresence = computed(() =>
-    this.presenceActuelle().filter(
-      p => p.statut === 'حاضر'
-    ).length
-  );
-
-  totalAbsence = computed(() =>
-    this.presenceActuelle().filter(
-      p => p.statut === 'غائب'
-    ).length
-  );
-
-  totalRetard = computed(() =>
-    this.presenceActuelle().filter(
-      p => p.statut === 'متأخر'
-    ).length
-  );
-
-
-  /* ═══════════════════════════════════════════════
-     STUDENT STATS
-  ═══════════════════════════════════════════════ */
-
-  studentAyat = computed(() => {
-
-    if (!this.etudiantSelectionne()) {
-      return 0;
-    }
-
-    return this.hifdActuel().reduce(
-      (total, h) => total + h.nombre_ayat,
-      0
-    );
-  });
-
-
-  studentExcellent = computed(() =>
-    this.hifdActuel().filter(
-      h => h.evaluation === 'ممتاز'
-    ).length
-  );
-
-
-  studentBon = computed(() =>
-    this.hifdActuel().filter(
-      h => h.evaluation === 'جيد'
-    ).length
-  );
-
-
-  studentRevision = computed(() =>
-    this.hifdActuel().filter(
-      h => h.evaluation === 'متوسط' ||
-           h.evaluation === 'ضعيف'
-    ).length
-  );
-
-
-  /* ═══════════════════════════════════════════════
-     GENDER CHART
-  ═══════════════════════════════════════════════ */
-
-  genderTotal = computed(() => {
-
-    return (
-      this.totalHommes() +
-      this.totalFemmes() +
-      this.totalEnfants()
-    );
-
-  });
-
-
-  genderPercent(value: number): number {
-
-    const total = this.genderTotal();
-
-    if (!total) {
-      return 0;
-    }
-
-    return Math.round(
-      (value / total) * 100
-    );
+export class RapportsComponent implements OnInit {
+
+  // ── Stats globales ─────────────────────────────
+  totalEtudiants = signal(0);
+  totalGroupes = signal(0);
+  souratesMktmla = signal(0);
+  moyennePresence = signal(0);
+  moyenneEval = signal(0);
+  totalAyat = signal(0);
+
+  // ── Données pour graphiques ────────────────────
+  presenceParSemaine = signal<any[]>([]);
+  topEtudiants = signal<any[]>([]);
+  progressionSourates = signal<any[]>([]);
+  repartitionGroupes = signal<any[]>([]);
+  dernieresEvals = signal<any[]>([]);
+
+  // ── Filtres ────────────────────────────────────
+  periodeFilter = signal('mois');
+  groupeFilter = signal('');
+  groupes = signal<any[]>([]);
+
+  loading = signal(true);
+
+  constructor(
+    private sb: SupabaseService,
+    public auth: AuthService
+  ) {}
+
+  ngOnInit() {
+    this.loadGroupes();
+    this.loadRapports();
   }
 
+  async loadGroupes() {
+    const { data } = await this.sb.client
+      .from('groupes')
+      .select('*')
+      .order('nom');
+    this.groupes.set(data || []);
+  }
 
-  /* ═══════════════════════════════════════════════
-     GROUP CHART
-  ═══════════════════════════════════════════════ */
+  async loadRapports() {
+    this.loading.set(true);
+    await Promise.all([
+      this.loadStatsGlobales(),
+      this.loadPresenceParSemaine(),
+      this.loadTopEtudiants(),
+      this.loadProgressionSourates(),
+      this.loadRepartitionGroupes(),
+      this.loadDernieresEvals()
+    ]);
+    this.loading.set(false);
+  }
 
-  groupesStats = computed(() => {
+  // ── Stats globales ─────────────────────────────
+  async loadStatsGlobales() {
+    // Total étudiants
+    const { count: nbEtu } = await this.sb.client
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'etudiant');
+    this.totalEtudiants.set(nbEtu || 0);
 
-    const map = new Map<string, number>();
+    // Total groupes
+    const { count: nbGrp } = await this.sb.client
+      .from('groupes')
+      .select('*', { count: 'exact', head: true });
+    this.totalGroupes.set(nbGrp || 0);
 
-    this.etudiants().forEach(e => {
+    // Sourates complètes
+    const { count: nbSura } = await this.sb.client
+      .from('suivi_sourates')
+      .select('*', { count: 'exact', head: true })
+      .eq('statut', 'مكتملة');
+    this.souratesMktmla.set(nbSura || 0);
 
-      map.set(
-        e.groupe,
-        (map.get(e.groupe) || 0) + 1
-      );
+    // Total ayat mémorisées
+    const { data: suivis } = await this.sb.client
+      .from('suivi_sourates')
+      .select('ayat_memorises');
+    const total = suivis?.reduce((acc, s) => acc + (s.ayat_memorises || 0), 0) || 0;
+    this.totalAyat.set(total);
 
+    // Moyenne présence
+    const { data: presences } = await this.sb.client
+      .from('presences')
+      .select('statut');
+    if (presences && presences.length > 0) {
+      const presents = presences.filter(p => p.statut === 'حاضر').length;
+      this.moyennePresence.set(Math.round((presents / presences.length) * 100));
+    }
+
+    // Moyenne évaluations
+    const { data: evals } = await this.sb.client
+      .from('evaluations')
+      .select('note, note_max');
+    if (evals && evals.length > 0) {
+      const moyenne = evals.reduce((acc, e) =>
+        acc + (e.note / e.note_max * 20), 0) / evals.length;
+      this.moyenneEval.set(Math.round(moyenne * 10) / 10);
+    }
+  }
+
+  // ── Présence par semaine ───────────────────────
+  async loadPresenceParSemaine() {
+    const { data } = await this.sb.client
+      .from('presences')
+      .select('date, statut')
+      .order('date', { ascending: true });
+
+    if (!data) return;
+
+    // Grouper par semaine
+    const semaines: any = {};
+    data.forEach(p => {
+      const date = new Date(p.date);
+      const semaine = this.getSemaineLabel(date);
+      if (!semaines[semaine]) {
+        semaines[semaine] = { label: semaine, present: 0, absent: 0, total: 0 };
+      }
+      semaines[semaine].total++;
+      if (p.statut === 'حاضر') semaines[semaine].present++;
+      if (p.statut === 'غائب') semaines[semaine].absent++;
     });
 
-    return Array.from(map.entries()).map(
-      ([nom, total]) => ({
-        nom,
-        total
-      })
-    );
+    const result = Object.values(semaines).slice(-6); // Dernières 6 semaines
+    this.presenceParSemaine.set(result);
+  }
 
-  });
+  getSemaineLabel(date: Date): string {
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay());
+    return startOfWeek.toLocaleDateString('ar-MA', { day: '2-digit', month: '2-digit' });
+  }
 
+  // ── Top étudiants ──────────────────────────────
+  async loadTopEtudiants() {
+    const { data: profiles } = await this.sb.client
+      .from('profiles')
+      .select('id, nom, groupe_id, groupes(nom)')
+      .eq('role', 'etudiant');
 
-  groupeMax = computed(() => {
+    const { data: suivis } = await this.sb.client
+      .from('suivi_sourates')
+      .select('etudiant_id, statut, ayat_memorises');
 
-    return Math.max(
-      ...this.groupesStats().map(
-        g => g.total
-      ),
-      1
-    );
+    const { data: presences } = await this.sb.client
+      .from('presences')
+      .select('etudiant_id, statut');
 
-  });
+    const { data: evals } = await this.sb.client
+      .from('evaluations')
+      .select('etudiant_id, note, note_max');
 
+    const enriched = (profiles || []).map(p => {
+      const eSuivis = suivis?.filter(s => s.etudiant_id === p.id) || [];
+      const ePresences = presences?.filter(pr => pr.etudiant_id === p.id) || [];
+      const eEvals = evals?.filter(ev => ev.etudiant_id === p.id) || [];
 
-  /* ═══════════════════════════════════════════════
-     HIFD TREND
-  ═══════════════════════════════════════════════ */
+      const mktmla = eSuivis.filter(s => s.statut === 'مكتملة').length;
+      const totalAyat = eSuivis.reduce((acc, s) => acc + (s.ayat_memorises || 0), 0);
+      const tauxPresence = ePresences.length > 0
+        ? Math.round((ePresences.filter(pr => pr.statut === 'حاضر').length / ePresences.length) * 100)
+        : 0;
+      const moyenneEval = eEvals.length > 0
+        ? Math.round(eEvals.reduce((acc, ev) => acc + (ev.note / ev.note_max * 20), 0) / eEvals.length * 10) / 10
+        : 0;
 
-  hifdTrend = computed(() => {
-
-    const records = [...this.hifdActuel()]
-      .sort(
-        (a, b) =>
-          new Date(a.date).getTime() -
-          new Date(b.date).getTime()
-      );
-
-    let total = 0;
-
-    return records.map(h => {
-
-      total += h.nombre_ayat;
+      // Score global (pondéré)
+      const score = (mktmla * 10) + (totalAyat * 0.1) + (tauxPresence * 0.3) + (moyenneEval * 2);
 
       return {
-        date: this.formatShortDate(h.date),
-        total
+        ...p,
+        nb_mktmla: mktmla,
+        total_ayat: totalAyat,
+        taux_presence: tauxPresence,
+        moyenne_eval: moyenneEval,
+        score: Math.round(score)
       };
-
     });
 
-  });
+    // Trier par score décroissant
+    const sorted = enriched
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
 
-
-  hifdMax = computed(() => {
-
-    return Math.max(
-      ...this.hifdTrend().map(
-        p => p.total
-      ),
-      1
-    );
-
-  });
-
-
-  /* ═══════════════════════════════════════════════
-     PRESENCE BY DATE
-  ═══════════════════════════════════════════════ */
-
-  presenceDates = computed(() => {
-
-    const map = new Map<
-      string,
-      {
-        date: string;
-        present: number;
-        absent: number;
-        late: number;
-      }
-    >();
-
-    this.presenceActuelle().forEach(p => {
-
-      if (!map.has(p.date)) {
-
-        map.set(p.date, {
-          date: p.date,
-          present: 0,
-          absent: 0,
-          late: 0
-        });
-
-      }
-
-      const item = map.get(p.date)!;
-
-      if (p.statut === 'حاضر') {
-        item.present++;
-      }
-
-      if (p.statut === 'غائب') {
-        item.absent++;
-      }
-
-      if (p.statut === 'متأخر') {
-        item.late++;
-      }
-
-    });
-
-    return Array.from(map.values())
-      .sort(
-        (a, b) =>
-          new Date(a.date).getTime() -
-          new Date(b.date).getTime()
-      );
-
-  });
-
-
-  presenceMax = computed(() => {
-
-    return Math.max(
-      ...this.presenceDates().map(
-        p =>
-          p.present +
-          p.absent +
-          p.late
-      ),
-      1
-    );
-
-  });
-
-
-  /* ═══════════════════════════════════════════════
-     ACTIONS
-  ═══════════════════════════════════════════════ */
-
-  afficherGlobal() {
-
-    this.mode.set('global');
-
-    this.filtreEtudiant.set('');
-
+    this.topEtudiants.set(sorted);
   }
 
+  // ── Progression sourates ───────────────────────
+  async loadProgressionSourates() {
+    const { data: sourates } = await this.sb.client
+      .from('sourates')
+      .select('id, nom, nom_arabe, nb_ayat')
+      .order('numero');
 
-  afficherEtudiant() {
+    const { data: suivis } = await this.sb.client
+      .from('suivi_sourates')
+      .select('sourate_id, statut');
 
-    this.mode.set('etudiant');
+    const { count: totalEtu } = await this.sb.client
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'etudiant');
 
+    const result = (sourates || []).map(s => {
+      const sSuivis = suivis?.filter(sv => sv.sourate_id === s.id) || [];
+      const mktmla = sSuivis.filter(sv => sv.statut === 'مكتملة').length;
+      const jariya = sSuivis.filter(sv => sv.statut === 'جارية').length;
+      const pct = totalEtu ? Math.round((mktmla / totalEtu) * 100) : 0;
+
+      return { ...s, nb_mktmla: mktmla, nb_jariya: jariya, pct_mktmla: pct };
+    }).filter(s => s.nb_mktmla > 0 || s.nb_jariya > 0);
+
+    this.progressionSourates.set(result);
   }
 
+  // ── Répartition groupes ────────────────────────
+  async loadRepartitionGroupes() {
+    const { data: groupes } = await this.sb.client
+      .from('groupes')
+      .select('id, nom, type');
 
-  changerEtudiant(value: string) {
+    const { data: profiles } = await this.sb.client
+      .from('profiles')
+      .select('groupe_id')
+      .eq('role', 'etudiant');
 
-    this.filtreEtudiant.set(value);
+    const result = (groupes || []).map(g => ({
+      ...g,
+      nb_etudiants: profiles?.filter(p => p.groupe_id === g.id).length || 0
+    })).filter(g => g.nb_etudiants > 0);
 
-    this.mode.set('etudiant');
-
+    this.repartitionGroupes.set(result);
   }
 
+  // ── Dernières évaluations ──────────────────────
+  async loadDernieresEvals() {
+    const { data } = await this.sb.client
+      .from('evaluations')
+      .select('*, profiles(nom), sourates(nom, nom_arabe)')
+      .order('created_at', { ascending: false })
+      .limit(8);
 
-  changerAnnee(value: string) {
-
-    this.annee.set(value);
-
+    this.dernieresEvals.set(data || []);
   }
 
-
-  actualiser() {
-
-    this.loading.set(true);
-
-    setTimeout(() => {
-      this.loading.set(false);
-    }, 400);
-
+  // ── Helpers ────────────────────────────────────
+  getBarWidth(val: number, max: number): number {
+    if (max === 0) return 0;
+    return Math.round((val / max) * 100);
   }
 
-
-  /* ═══════════════════════════════════════════════
-     HELPERS
-  ═══════════════════════════════════════════════ */
-
-  formatShortDate(date: string): string {
-
-    const d = new Date(date);
-
-    return `${String(d.getDate()).padStart(2, '0')}/${String(
-      d.getMonth() + 1
-    ).padStart(2, '0')}`;
-
+  getNoteClass(note: number, max: number): string {
+    const pct = (note / max) * 100;
+    if (pct >= 85) return 'note-green';
+    if (pct >= 65) return 'note-amber';
+    return 'note-red';
   }
 
-
-  formatDate(date: string): string {
-
-    const d = new Date(date);
-
-    return `${String(d.getDate()).padStart(2, '0')}/${String(
-      d.getMonth() + 1
-    ).padStart(2, '0')}/${d.getFullYear()}`;
-
+  getMedal(index: number): string {
+    return ['🥇', '🥈', '🥉'][index] || '⭐';
   }
 
-
-  getBarWidth(value: number, max: number): string {
-
-    return `${Math.round((value / max) * 100)}%`;
-
+  getGroupeColor(type: string): string {
+    const c: any = {
+      'رجال': '#1B6FA8',
+      'نساء': '#534AB7',
+      'أطفال': '#1D9E75'
+    };
+    return c[type] || '#888';
   }
 
-
-  getLinePoints(): string {
-
-    const data = this.hifdTrend();
-
-    if (!data.length) {
-      return '';
-    }
-
-    const width = 600;
-    const height = 220;
-
-    return data
-      .map((item, index) => {
-
-        const x =
-          data.length === 1
-            ? width / 2
-            : (index / (data.length - 1)) *
-              width;
-
-        const y =
-          height -
-          (item.total / this.hifdMax()) *
-            height;
-
-        return `${x},${y}`;
-
-      })
-      .join(' ');
-
+  onPeriodeChange(val: string) {
+    this.periodeFilter.set(val);
+    this.loadRapports();
   }
 
-
-  getPointX(index: number): number {
-
-    const data = this.hifdTrend();
-
-    if (data.length <= 1) {
-      return 300;
-    }
-
-    return (
-      (index / (data.length - 1)) *
-      600
-    );
-
+  onGroupeChange(val: string) {
+    this.groupeFilter.set(val);
+    this.loadRapports();
   }
-
-
-  getPointY(value: number): number {
-
-    return (
-      220 -
-      (value / this.hifdMax()) *
-        220
-    );
-
-  }
-
-
-  getEvaluationLabel(
-    evaluation: string
-  ): string {
-
-    switch (evaluation) {
-
-      case 'ممتاز':
-        return 'ممتاز';
-
-      case 'جيد':
-        return 'جيد';
-
-      case 'متوسط':
-        return 'متوسط';
-
-      case 'ضعيف':
-        return 'يحتاج إلى مراجعة';
-
-      default:
-        return evaluation;
-
-    }
-
-  }
-
 }

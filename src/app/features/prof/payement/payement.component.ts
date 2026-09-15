@@ -1,7 +1,7 @@
 import { Component,  signal,  computed,  OnInit} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {  ActivatedRoute,  RouterLink} from '@angular/router';
-import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
+import { SidebarComponent } from '../sidebar/sidebar.component';
 
 
 /* ═══════════════════════════════════════════════
@@ -36,7 +36,6 @@ interface Paiement {
 
   imports: [
     CommonModule,
-    RouterLink,
     SidebarComponent
   ],
 
