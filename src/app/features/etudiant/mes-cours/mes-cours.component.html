@@ -1,0 +1,230 @@
+<div class="layout" dir="rtl">
+
+  <!-- ══ SIDEBAR ═══════════════════════════════ -->
+
+  <app-sidebar activePage="mes-cours"></app-sidebar>
+
+
+  <!-- ══ MAIN ═════════════════════════════════ -->
+
+  <main class="main">
+
+    <!-- TOPBAR -->
+
+    <div class="topbar">
+
+      <div>
+
+        <div class="topbar-title">
+          دروسي
+        </div>
+
+        <div class="topbar-sub">
+          جميع الدروس الخاصة بك
+        </div>
+
+      </div>
+
+
+      <div class="topbar-actions">
+
+        <button
+          class="btn-refresh"
+          (click)="loading = true">
+
+          🔄 تحديث
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- CONTENT -->
+
+    <div class="content">
+
+
+      <!-- ══ HEADER ═══════════════════════════ -->
+
+      <div class="page-header">
+
+        <div>
+
+          <h2>
+            📚 الدروس
+          </h2>
+
+          <p>
+            تصفح الدروس التي أضافها الأستاذ
+          </p>
+
+        </div>
+
+
+        <div class="course-count">
+
+          {{ cours.length }}
+
+          <span>
+            درس
+          </span>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ══ LOADING ═════════════════════════ -->
+
+      @if (loading) {
+
+        <div class="loading-wrap">
+
+          <div class="spinner-big"></div>
+
+          <p>
+            جاري التحميل...
+          </p>
+
+        </div>
+
+      }
+
+
+      <!-- ══ EMPTY ═══════════════════════════ -->
+
+      @else if (cours.length === 0) {
+
+        <div class="empty-state">
+
+          <div class="empty-icon">
+            📚
+          </div>
+
+          <h3>
+            لا توجد دروس حالياً
+          </h3>
+
+          <p>
+            عندما يضيف الأستاذ درساً سيظهر هنا
+          </p>
+
+        </div>
+
+      }
+
+
+      <!-- ══ COURSES ═════════════════════════ -->
+
+      @else {
+
+        <div class="courses-grid">
+
+          @for (course of cours; track course.id) {
+
+            <div class="course-card">
+
+
+              <!-- IMAGE -->
+
+              <div class="course-image">
+
+                <img
+                  [src]="course.image"
+                  [alt]="course.titre"
+                  (error)="onImageError($event)"
+                />
+
+
+                <div class="image-overlay">
+
+                  <span class="course-type">
+                    📖 درس
+                  </span>
+
+                </div>
+
+              </div>
+
+
+
+              <!-- BODY -->
+
+              <div class="course-body">
+
+
+                <div class="course-title">
+
+                  {{ course.titre }}
+
+                </div>
+
+
+                <div class="course-description">
+
+                  {{ course.description }}
+
+                </div>
+
+
+                <!-- INFO -->
+
+                <div class="course-info">
+
+                  <div class="info-item">
+
+                    👨‍🏫
+
+                    <span>
+                      {{ course.professeur }}
+                    </span>
+
+                  </div>
+
+
+                  <div class="info-item">
+
+                    📅
+
+                    <span>
+                      {{ course.date }}
+                    </span>
+
+                  </div>
+
+                </div>
+
+
+
+                <!-- ACTIONS -->
+
+                <div class="course-actions">
+
+                  <button
+                    class="btn-download"
+                    (click)="downloadCours(course)">
+
+                    ⬇️ تحميل
+
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+      }
+
+    </div>
+
+  </main>
+
+</div>

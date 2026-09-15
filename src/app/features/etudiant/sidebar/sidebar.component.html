@@ -1,0 +1,121 @@
+<!-- MOBILE TOGGLE -->
+<button
+  class="mobile-menu-btn"
+  type="button"
+  (click)="toggle()"
+  [attr.aria-label]="isOpen() ? 'إغلاق القائمة' : 'فتح القائمة'"
+>
+  <span *ngIf="!isOpen()">☰</span>
+  <span *ngIf="isOpen()">✕</span>
+</button>
+
+<!-- OVERLAY MOBILE -->
+@if (isOpen()) {
+  <div
+    class="sidebar-overlay"
+    (click)="close()"
+  ></div>
+}
+
+<!-- SIDEBAR -->
+<aside
+  class="sidebar"
+  [class.sidebar-open]="isOpen()"
+>
+  <div class="sidebar-logo">
+    <img
+      src="assets/images/logo.jpg"
+      alt="تحبير"
+      class="logo-img"
+    />
+
+    <div>
+      <div class="logo-title">تحبير أكاديمي</div>
+      <div class="logo-sub">أكاديمية القرآن الكريم</div>
+    </div>
+
+    <!-- CLOSE BUTTON MOBILE -->
+    <button
+      class="sidebar-close"
+      type="button"
+      (click)="close()"
+    >
+      ✕
+    </button>
+  </div>
+
+  <nav class="nav">
+
+    <div class="nav-label">الرئيسية</div>
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'dashboard'"
+      routerLink="/etudiant/dashboard"
+      (click)="close()"
+    >
+      <span class="nav-icon">📊</span>
+      <span>لوحة التحكم</span>
+    </a>
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'mes-cours'"
+      routerLink="/etudiant/mes-cours"
+      (click)="close()"
+    >
+      <span class="nav-icon">📖</span>
+      <span>الدروس</span>
+    </a>
+
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'mes-devoirs'"
+      routerLink="/etudiant/mes-devoirs"
+      (click)="close()"
+    >
+      <span class="nav-icon">📝</span>
+      <span>الواجبات</span>
+    </a>
+    
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'mes-notifications'"
+      routerLink="/etudiant/mes-notifications"
+      (click)="close()"
+    >
+      <span class="nav-icon">🔔</span>
+      <span>الإشعارات</span>
+    </a>
+
+    
+  </nav>
+
+  <div class="sidebar-footer">
+
+    <div class="user-info">
+      <div class="user-avatar">
+        {{ auth.currentUser()?.nom?.charAt(0) }}
+      </div>
+
+      <div class="user-text">
+        <div class="user-name">
+          {{ auth.currentUser()?.nom }}
+        </div>
+
+        <div class="user-role">
+          معلم
+        </div>
+      </div>
+    </div>
+
+    <button
+      class="logout-btn"
+      type="button"
+      (click)="logout()"
+    >
+      🚪 خروج
+    </button>
+
+  </div>
+</aside>
