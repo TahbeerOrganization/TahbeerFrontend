@@ -7,6 +7,8 @@
 }
 
 
+/* ══ LAYOUT ═══════════════════════════════════ */
+
 .layout {
 
   display: flex;
@@ -87,7 +89,7 @@
 }
 
 
-/* ══ REFRESH ═════════════════════════════════ */
+/* ══ BUTTON REFRESH ══════════════════════════ */
 
 .btn-refresh {
 
@@ -110,14 +112,6 @@
 .btn-refresh:hover {
 
   background: #f5f5f3;
-}
-
-
-.btn-refresh:disabled {
-
-  opacity: .5;
-
-  cursor: not-allowed;
 }
 
 
@@ -169,11 +163,11 @@
 
 /* ══ COUNT ═══════════════════════════════════ */
 
-.devoir-count {
+.course-count {
 
-  background: #FAEEDA;
+  background: #E1F5EE;
 
-  color: #854F0B;
+  color: #0F6E56;
 
   padding: 8px 14px;
 
@@ -185,7 +179,7 @@
 }
 
 
-.devoir-count span {
+.course-count span {
 
   font-size: 11px;
 
@@ -193,9 +187,9 @@
 }
 
 
-/* ══ GRID ════════════════════════════════════ */
+/* ══ COURSES GRID ════════════════════════════ */
 
-.devoirs-grid {
+.courses-grid {
 
   display: grid;
 
@@ -205,9 +199,9 @@
 }
 
 
-/* ══ CARD ════════════════════════════════════ */
+/* ══ COURSE CARD ═════════════════════════════ */
 
-.devoir-card {
+.course-card {
 
   background: #fff;
 
@@ -218,35 +212,34 @@
   overflow: hidden;
 
   transition:
-    transform .2s,
-    box-shadow .2s;
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 
-.devoir-card:hover {
+.course-card:hover {
 
   transform: translateY(-3px);
 
-  box-shadow:
-    0 8px 25px rgba(0,0,0,.07);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.07);
 }
 
 
 /* ══ IMAGE ═══════════════════════════════════ */
 
-.devoir-image {
+.course-image {
 
   height: 170px;
 
   position: relative;
 
-  background: #FAEEDA;
+  background: #E1F5EE;
 
   overflow: hidden;
 }
 
 
-.devoir-image img {
+.course-image img {
 
   width: 100%;
 
@@ -276,7 +269,11 @@
 }
 
 
-.status-badge {
+.course-type {
+
+  background: rgba(255,255,255,0.94);
+
+  color: #0F6E56;
 
   padding: 5px 9px;
 
@@ -285,26 +282,12 @@
   font-size: 11px;
 
   font-weight: 500;
-
-  background: rgba(255,255,255,.94);
-}
-
-
-.status-success {
-
-  color: #0F6E56;
-}
-
-
-.status-warning {
-
-  color: #854F0B;
 }
 
 
 /* ══ BODY ════════════════════════════════════ */
 
-.devoir-body {
+.course-body {
 
   padding: 15px;
 }
@@ -312,7 +295,7 @@
 
 /* ══ TITLE ═══════════════════════════════════ */
 
-.devoir-title {
+.course-title {
 
   font-size: 15px;
 
@@ -326,7 +309,7 @@
 
 /* ══ DESCRIPTION ═════════════════════════════ */
 
-.devoir-description {
+.course-description {
 
   font-size: 12px;
 
@@ -342,7 +325,7 @@
 
 /* ══ INFO ════════════════════════════════════ */
 
-.devoir-info {
+.course-info {
 
   display: flex;
 
@@ -352,9 +335,9 @@
 
   padding: 10px 0;
 
-  border-top: .5px solid #f0ede8;
+  border-top: 0.5px solid #f0ede8;
 
-  border-bottom: .5px solid #f0ede8;
+  border-bottom: 0.5px solid #f0ede8;
 
   margin-bottom: 12px;
 }
@@ -380,201 +363,65 @@
 }
 
 
-.deadline strong {
+/* ══ ACTIONS ═════════════════════════════════ */
 
-  color: #D85A30;
-
-  font-weight: 600;
-}
-
-
-/* ══ UPLOAD ═════════════════════════════════ */
-
-.upload-section {
-
-  margin-top: 8px;
-}
-
-
-.upload-label {
-
-  display: block;
-
-  font-size: 11px;
-
-  font-weight: 500;
-
-  color: #555;
-
-  margin-bottom: 7px;
-}
-
-
-.file-upload {
+.course-actions {
 
   display: flex;
 
-  align-items: center;
-
   gap: 8px;
-
-  width: 100%;
-
-  min-height: 42px;
-
-  padding: 8px 10px;
-
-  border: 1px dashed #b8b6b0;
-
-  border-radius: 8px;
-
-  background: #fafaf8;
-
-  cursor: pointer;
-
-  transition: .15s;
 }
 
 
-.file-upload:hover {
+.btn-open {
 
-  border-color: #0F6E56;
+  flex: 1;
 
-  background: #f3faf7;
-}
+  background: #0F6E56;
 
-
-.file-upload input {
-
-  display: none;
-}
-
-
-.upload-icon {
-
-  font-size: 17px;
-
-  flex-shrink: 0;
-}
-
-
-.upload-text {
-
-  font-size: 11px;
-
-  color: #777;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-}
-
-
-/* ══ SELECTED FILE ══════════════════════════ */
-
-.selected-file {
-
-  margin-top: 7px;
-
-  padding: 6px 8px;
-
-  border-radius: 6px;
-
-  background: #E1F5EE;
-
-  color: #0F6E56;
-
-  font-size: 10px;
-}
-
-
-/* ══ SUBMIT ═════════════════════════════════ */
-
-.btn-submit {
-
-  width: 100%;
-
-  margin-top: 9px;
-
-  padding: 9px;
+  color: #fff;
 
   border: none;
 
   border-radius: 8px;
 
-  background: #0F6E56;
-
-  color: white;
+  padding: 9px 8px;
 
   font-size: 11px;
 
   cursor: pointer;
 
-  transition: background .15s;
+  transition: background 0.15s;
 }
 
 
-.btn-submit:hover {
+.btn-open:hover {
 
   background: #085041;
 }
 
 
-.btn-submit:disabled {
-
-  background: #d8d8d5;
-
-  color: #888;
-
-  cursor: not-allowed;
-}
-
-
-/* ══ SUBMITTED ══════════════════════════════ */
-
-.submitted-box {
-
-  display: flex;
-
-  align-items: center;
-
-  gap: 10px;
-
-  padding: 11px;
+.btn-download {
 
   background: #E1F5EE;
 
-  border-radius: 9px;
-
   color: #0F6E56;
+
+  border: none;
+
+  border-radius: 8px;
+
+  padding: 9px 12px;
+
+  font-size: 11px;
+
+  cursor: pointer;
 }
 
 
-.submitted-icon {
+.btn-download:hover {
 
-  font-size: 20px;
-}
-
-
-.submitted-box strong {
-
-  display: block;
-
-  font-size: 12px;
-
-  margin-bottom: 2px;
-}
-
-
-.submitted-box span {
-
-  display: block;
-
-  font-size: 10px;
-
-  color: #4c8875;
+  background: #ccefe3;
 }
 
 
@@ -584,7 +431,7 @@
 
   background: #fff;
 
-  border: .5px solid #e0ded8;
+  border: 0.5px solid #e0ded8;
 
   border-radius: 12px;
 
@@ -654,7 +501,7 @@
 
   border-radius: 50%;
 
-  animation: spin .8s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 
@@ -673,7 +520,7 @@
 
 @media (max-width: 1100px) {
 
-  .devoirs-grid {
+  .courses-grid {
 
     grid-template-columns: repeat(2, 1fr);
 
@@ -695,6 +542,7 @@
     width: 100%;
 
     min-height: 100vh;
+
   }
 
 
@@ -703,6 +551,7 @@
     width: 100%;
 
     min-width: 0;
+
   }
 
 
@@ -711,12 +560,14 @@
     height: 64px;
 
     padding: 0 68px 0 14px;
+
   }
 
 
   .topbar-title {
 
     font-size: 15px;
+
   }
 
 
@@ -731,70 +582,89 @@
     text-overflow: ellipsis;
 
     max-width: 220px;
+
   }
 
 
   .content {
 
     padding: 14px 12px;
+
   }
 
 
   .page-header {
 
     margin-bottom: 14px;
+
   }
 
 
   .page-header h2 {
 
     font-size: 16px;
+
   }
 
 
   .page-header p {
 
     font-size: 11px;
+
   }
 
 
-  .devoir-count {
+  .course-count {
 
     font-size: 17px;
 
     padding: 7px 11px;
+
   }
 
 
-  .devoirs-grid {
+  .courses-grid {
 
     grid-template-columns: 1fr;
 
     gap: 12px;
+
   }
 
 
-  .devoir-image {
+  .course-image {
 
     height: 180px;
+
   }
 
 
-  .devoir-body {
+  .course-body {
 
     padding: 13px;
+
   }
 
 
-  .devoir-title {
+  .course-title {
 
     font-size: 14px;
+
   }
 
 
-  .devoir-description {
+  .course-description {
 
     font-size: 11px;
+
+  }
+
+
+  .btn-open,
+  .btn-download {
+
+    font-size: 11px;
+
   }
 
 }
