@@ -78,16 +78,6 @@
       <span>الحضور</span>
     </a>
 
-    <a
-      class="nav-item"
-      [class.active]="activePage === 'sourates'"
-      routerLink="/prof/sourates"
-      (click)="close()"
-    >
-      <span class="nav-icon">📖</span>
-      <span>الأقسام</span>
-    </a>
-
     <div class="nav-label">التعليم</div>
 
     <a
@@ -138,6 +128,15 @@
     >
       <span class="nav-icon">🗂️</span>
       <span>المجموعات</span>
+    </a>
+    <a
+      class="nav-item"
+      [class.active]="activePage === 'emploi'"
+      routerLink="/prof/emploi"
+      (click)="close()"
+    >
+      <span class="nav-icon">📅</span>
+      <span>استعمال الزمن</span>
     </a>
 
   </nav>

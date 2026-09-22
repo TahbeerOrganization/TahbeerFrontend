@@ -1,33 +1,32 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
+
 import { AuthService } from '../../../core/services/auth.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
   selector: 'app-dashboard',
+  standalone: true,
   imports: [CommonModule, RouterLink, SidebarComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
-export class DashboardComponent implements OnInit{
-  
+export class DashboardComponent implements OnInit {
 
-  // ── Stats KPI ──────────────────────────────────
   totalEtudiants = signal(0);
   presenceAujourdhui = signal(0);
   souratesMktmla = signal(0);
   devoirsEnAttente = signal(0);
 
-  // ── Données tableaux ───────────────────────────
   etudiants = signal<any[]>([]);
   presencesAujourdhui = signal<any[]>([]);
   devoirsRecents = signal<any[]>([]);
   alertesGiaab = signal<any[]>([]);
 
-  // ── UI State ───────────────────────────────────
   loading = signal(true);
+  errorMsg = signal('');
   activeMenu = signal('dashboard');
 
   constructor(
@@ -36,142 +35,236 @@ export class DashboardComponent implements OnInit{
     private router: Router
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadDashboard();
   }
 
-  async loadDashboard() {
+  async loadDashboard(): Promise<void> {
     this.loading.set(true);
+    this.errorMsg.set('');
+
     try {
       await Promise.all([
         this.loadEtudiants(),
-        this.loadPresencesAujourdhui(),
-        this.loadSouratesMktmla(),
-        this.loadDevoirsEnAttente(),
-        this.loadAlertesGiaab()
+        this.loadPresences(),
+        this.loadSourates(),
+        this.loadDevoirs(),
+        this.loadAbsences()
       ]);
-    } catch (e) {
-      console.error('Dashboard error:', e);
+    } catch (error: any) {
+      console.error('Dashboard:', error);
+      this.errorMsg.set(
+        error?.message || 'خطأ في تحميل لوحة التحكم'
+      );
     } finally {
       this.loading.set(false);
     }
   }
 
-  // ── Charger les étudiants ──────────────────────
-  async loadEtudiants() {
-    const { data } = await this.sb.client
+  async loadEtudiants(): Promise<void> {
+    const { data, error } = await this.sb.client
       .from('profiles')
-      .select('*, groupes(nom, type)')
+      .select('id, nom, role, groupe_id, niveau, created_at')
       .eq('role', 'etudiant')
       .order('nom');
 
-    this.etudiants.set(data || []);
-    this.totalEtudiants.set(data?.length || 0);
+    if (error) {
+      console.error('Erreur étudiants:', error);
+      throw error;
+    }
+
+    const liste = data ?? [];
+
+    this.etudiants.set(liste);
+    this.totalEtudiants.set(liste.length);
+
+    console.log('Étudiants:', liste);
+    console.log('Total étudiants:', liste.length);
   }
 
-  // ── Charger présences aujourd'hui ──────────────
-  async loadPresencesAujourdhui() {
-    const today = new Date().toISOString().split('T')[0];
+  async loadPresences(): Promise<void> {
+    const today = new Date()
+      .toISOString()
+      .split('T')[0];
 
-    const { data } = await this.sb.client
+    const { data, error } = await this.sb.client
       .from('presences')
       .select('*, profiles(nom, groupe_id)')
       .eq('date', today);
 
-    this.presencesAujourdhui.set(data || []);
-    const presents = data?.filter(p => p.statut === 'حاضر').length || 0;
-    this.presenceAujourdhui.set(presents);
+    if (error) {
+      console.error('Erreur présences:', error);
+      this.presencesAujourdhui.set([]);
+      this.presenceAujourdhui.set(0);
+      return;
+    }
+
+    const liste = data ?? [];
+
+    this.presencesAujourdhui.set(liste);
+
+    this.presenceAujourdhui.set(
+      liste.filter(
+        (p: any) => p.statut === 'حاضر'
+      ).length
+    );
   }
 
-  // ── Charger sourates complètes ─────────────────
-  async loadSouratesMktmla() {
-    const { data } = await this.sb.client
+  async loadSourates(): Promise<void> {
+    const { data, error } = await this.sb.client
       .from('suivi_sourates')
-      .select('*')
+      .select('id')
       .eq('statut', 'مكتملة');
 
-    this.souratesMktmla.set(data?.length || 0);
+    if (error) {
+      console.error('Erreur sourates:', error);
+      this.souratesMktmla.set(0);
+      return;
+    }
+
+    this.souratesMktmla.set(
+      data?.length ?? 0
+    );
   }
 
-  // ── Charger devoirs en attente ─────────────────
-  async loadDevoirsEnAttente() {
-    const { data } = await this.sb.client
+  async loadDevoirs(): Promise<void> {
+    const { data, error } = await this.sb.client
       .from('soumissions')
-      .select('*, devoirs(titre, deadline)')
+      .select(`
+        *,
+        devoirs(titre, deadline),
+        profiles(nom)
+      `)
       .eq('statut', 'لم يسلّم');
 
-    this.devoirsRecents.set(data?.slice(0, 5) || []);
-    this.devoirsEnAttente.set(data?.length || 0);
+    if (error) {
+      console.error('Erreur devoirs:', error);
+      this.devoirsRecents.set([]);
+      this.devoirsEnAttente.set(0);
+      return;
+    }
+
+    const liste = data ?? [];
+
+    this.devoirsRecents.set(
+      liste.slice(0, 5)
+    );
+
+    this.devoirsEnAttente.set(
+      liste.length
+    );
   }
 
-  // ── Alertes absence répétée ────────────────────
-  async loadAlertesGiaab() {
-    const { data } = await this.sb.client
+  async loadAbsences(): Promise<void> {
+    const { data, error } = await this.sb.client
       .from('presences')
-      .select('etudiant_id, statut, profiles(nom)')
+      .select(`
+        etudiant_id,
+        statut,
+        profiles(nom)
+      `)
       .eq('statut', 'غائب');
 
-    // Grouper par étudiant et compter
-    const counts: any = {};
-    data?.forEach((p: any) => {
-      const id = p.etudiant_id;
-      if (!counts[id]) {
-        counts[id] = { nom: p.profiles?.nom, count: 0, id };
+    if (error) {
+      console.error('Erreur absences:', error);
+      this.alertesGiaab.set([]);
+      return;
+    }
+
+    const counts: Record<string, any> = {};
+
+    (data ?? []).forEach((p: any) => {
+
+      if (!p.etudiant_id) {
+        return;
       }
-      counts[id].count++;
+
+      if (!counts[p.etudiant_id]) {
+        counts[p.etudiant_id] = {
+          id: p.etudiant_id,
+          nom: p.profiles?.nom || 'طالب',
+          count: 0
+        };
+      }
+
+      counts[p.etudiant_id].count++;
     });
 
     const alertes = Object.values(counts)
-      .filter((a: any) => a.count >= 2)
-      .sort((a: any, b: any) => b.count - a.count)
+      .filter(
+        (x: any) => x.count >= 2
+      )
+      .sort(
+        (a: any, b: any) =>
+          b.count - a.count
+      )
       .slice(0, 5);
 
     this.alertesGiaab.set(alertes);
   }
 
-  // ── Navigation ─────────────────────────────────
-  navigateTo(path: string) {
+  getTauxPresence(): number {
+    const total = this.totalEtudiants();
+
+    if (total === 0) {
+      return 0;
+    }
+
+    return Math.round(
+      (this.presenceAujourdhui() / total) * 100
+    );
+  }
+
+  getBadgeGroupe(type?: string): string {
+    switch (type) {
+      case 'رجال':
+        return 'badge-blue';
+
+      case 'نساء':
+        return 'badge-purple';
+
+      case 'أطفال':
+        return 'badge-green';
+
+      default:
+        return 'badge-gray';
+    }
+  }
+
+  getNiveauBadge(niveau?: string): string {
+    switch (niveau) {
+      case 'مبتدئ':
+        return 'badge-green';
+
+      case 'متوسط':
+        return 'badge-blue';
+
+      case 'متقدم':
+        return 'badge-purple';
+
+      default:
+        return 'badge-gray';
+    }
+  }
+
+  navigateTo(path: string): void {
     this.activeMenu.set(path);
     this.router.navigate(['/prof', path]);
   }
 
-  // ── Logout ─────────────────────────────────────
-  async logout() {
+  async logout(): Promise<void> {
     await this.auth.logout();
   }
 
-  // ── Helpers ────────────────────────────────────
-  getTauxPresence(): number {
-    if (this.totalEtudiants() === 0) return 0;
-    return Math.round((this.presenceAujourdhui() / this.totalEtudiants()) * 100);
-  }
-
-  getBadgeGroupe(type: string): string {
-    const badges: any = {
-      'رجال': 'badge-blue',
-      'نساء': 'badge-purple',
-      'أطفال': 'badge-green'
-    };
-    return badges[type] || 'badge-gray';
-  }
-
-    getNiveauBadge(niveau: string): string {
-    const badges: any = {
-      'متقدم': 'badge-green',
-      'متوسط': 'badge-blue',
-      'مبتدئ': 'badge-amber'
-    };
-    return badges[niveau] || 'badge-gray';
-  }
-
-  // ── Ajoute ici ─────────────────────────────────
   today(): string {
-    return new Date().toLocaleDateString('ar-MA', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return new Date().toLocaleDateString(
+      'ar-MA',
+      {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }
+    );
   }
-
-} // ← fermeture de la classe}
+}

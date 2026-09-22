@@ -1,7 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SidebarComponent } from '../sidebar/sidebar.component';
@@ -15,22 +14,18 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 })
 export class PresencesComponent implements OnInit {
 
-  // ── Données ────────────────────────────────────
   etudiants = signal<any[]>([]);
   groupes = signal<any[]>([]);
   presences = signal<any[]>([]);
 
-  // ── UI State ───────────────────────────────────
   loading = signal(true);
   saving = signal(false);
   successMsg = signal('');
   errorMsg = signal('');
 
-  // ── Filtres ────────────────────────────────────
   selectedDate = signal(new Date().toISOString().split('T')[0]);
   selectedGroupe = signal('');
 
-  // ── Stats ──────────────────────────────────────
   totalPresents = signal(0);
   totalAbsents = signal(0);
   totalRetards = signal(0);
@@ -40,149 +35,288 @@ export class PresencesComponent implements OnInit {
     public auth: AuthService
   ) {}
 
-  ngOnInit() {
-    this.loadGroupes();
-    this.loadEtudiants();
+  ngOnInit(): void {
+    this.loadData();
   }
 
-  async loadGroupes() {
-    const { data } = await this.sb.client
-      .from('groupes')
-      .select('*')
-      .order('nom');
-    this.groupes.set(data || []);
-  }
-
-  async loadEtudiants() {
+  async loadData(): Promise<void> {
     this.loading.set(true);
+    this.errorMsg.set('');
 
+    try {
+      await this.loadGroupes();
+      await this.loadEtudiants();
+    } catch (error: any) {
+      console.error('Erreur chargement présences:', error);
+      this.errorMsg.set(error?.message || 'خطأ في تحميل البيانات');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async loadGroupes(): Promise<void> {
+    const { data, error } = await this.sb.client
+      .from('groupes')
+      .select('id, nom, type')
+      .order('nom');
+
+    if (error) {
+      console.error('Erreur groupes:', error);
+      throw error;
+    }
+
+    this.groupes.set(data ?? []);
+  }
+
+async loadEtudiants(): Promise<void> {
+  this.loading.set(true);
+  this.errorMsg.set('');
+
+  try {
+    // 1. Charger les étudiants
     let query = this.sb.client
       .from('profiles')
-      .select('*, groupes(id, nom, type)')
+      .select('id, nom, role, groupe_id, niveau')
       .eq('role', 'etudiant')
       .order('nom');
 
+    // 2. Filtrer par groupe si nécessaire
     if (this.selectedGroupe()) {
       query = query.eq('groupe_id', this.selectedGroupe());
     }
 
-    const { data: etudiants } = await query;
+    const { data: etudiants, error: etudiantsError } = await query;
 
-    // Charger les présences du jour sélectionné
-    const { data: presences } = await this.sb.client
+    if (etudiantsError) {
+      throw etudiantsError;
+    }
+
+    // 3. Charger les présences pour la date sélectionnée
+    const { data: presences, error: presencesError } = await this.sb.client
       .from('presences')
-      .select('*')
+      .select('id, etudiant_id, statut, note')
       .eq('date', this.selectedDate());
 
-    // Fusionner — pour chaque étudiant, trouver sa présence
-    const merged = (etudiants || []).map(e => ({
-      ...e,
-      statut: presences?.find(p => p.etudiant_id === e.id)?.statut || null,
-      presence_id: presences?.find(p => p.etudiant_id === e.id)?.id || null,
-      note: presences?.find(p => p.etudiant_id === e.id)?.note || ''
-    }));
+    if (presencesError) {
+      throw presencesError;
+    }
 
+    // 4. Fusionner étudiants + présence
+    const merged = (etudiants ?? []).map((etudiant: any) => {
+      const presence = (presences ?? []).find(
+        (p: any) => p.etudiant_id === etudiant.id
+      );
+
+      return {
+        ...etudiant,
+        statut: presence?.statut ?? null,
+        presence_id: presence?.id ?? null,
+        note: presence?.note ?? ''
+      };
+    });
+
+    // 5. Mettre à jour l'écran
     this.etudiants.set(merged);
     this.calculerStats(merged);
+
+  } catch (error: any) {
+    console.error('Erreur chargement étudiants:', error);
+
+    this.errorMsg.set(
+      error?.message || 'خطأ في تحميل الطلاب'
+    );
+
+    this.etudiants.set([]);
+    this.calculerStats([]);
+
+  } finally {
     this.loading.set(false);
   }
+}
 
-  calculerStats(etudiants: any[]) {
-    this.totalPresents.set(etudiants.filter(e => e.statut === 'حاضر').length);
-    this.totalAbsents.set(etudiants.filter(e => e.statut === 'غائب').length);
-    this.totalRetards.set(etudiants.filter(e => e.statut === 'متأخر').length);
+
+  calculerStats(etudiants: any[]): void {
+    this.totalPresents.set(
+      etudiants.filter(e => e.statut === 'حاضر').length
+    );
+
+    this.totalAbsents.set(
+      etudiants.filter(e => e.statut === 'غائب').length
+    );
+
+    this.totalRetards.set(
+      etudiants.filter(e => e.statut === 'متأخر').length
+    );
   }
 
-  // ── Changer statut d'un étudiant ───────────────
-    async setStatut(etudiant: any, statut: string) {
-    // Update local d'abord
-    const updated = this.etudiants().map(e =>
-      e.id === etudiant.id ? { ...e, statut } : e
+  async setStatut(
+    etudiant: any,
+    statut: string
+  ): Promise<void> {
+
+    const oldEtudiants = this.etudiants();
+
+    // Mise à jour immédiate de l'interface
+    const updated = oldEtudiants.map(e =>
+      e.id === etudiant.id
+        ? { ...e, statut }
+        : e
     );
+
     this.etudiants.set(updated);
     this.calculerStats(updated);
 
     try {
-      // Vérifier si présence existe déjà
-      const { data: existing } = await this.sb.client
-        .from('presences')
-        .select('id')
-        .eq('etudiant_id', etudiant.id)
-        .eq('date', this.selectedDate())
-        .single();
+      const { data: existing, error: findError } =
+        await this.sb.client
+          .from('presences')
+          .select('id')
+          .eq('etudiant_id', etudiant.id)
+          .eq('date', this.selectedDate())
+          .maybeSingle();
+
+      if (findError) {
+        throw findError;
+      }
 
       if (existing) {
-        // UPDATE
+
         const { error } = await this.sb.client
           .from('presences')
-          .update({ statut })
+          .update({
+            statut
+          })
           .eq('id', existing.id);
-        if (error) throw error;
+
+        if (error) {
+          throw error;
+        }
+
       } else {
-        // INSERT
+
         const { error } = await this.sb.client
           .from('presences')
           .insert({
             etudiant_id: etudiant.id,
             date: this.selectedDate(),
-            statut: statut
+            statut
           });
-        if (error) throw error;
+
+        if (error) {
+          throw error;
+        }
       }
-    } catch (e: any) {
-      console.error('Erreur présence:', e);
-      this.errorMsg.set('خطأ: ' + e.message);
-      setTimeout(() => this.errorMsg.set(''), 3000);
+
+    } catch (error: any) {
+
+      console.error('Erreur statut:', error);
+
+      // Restaurer l'ancien état
+      this.etudiants.set(oldEtudiants);
+      this.calculerStats(oldEtudiants);
+
+      this.errorMsg.set(
+        error?.message || 'خطأ في تسجيل الحضور'
+      );
+
+      setTimeout(() => {
+        this.errorMsg.set('');
+      }, 3000);
     }
   }
 
-  // ── Marquer tous présents ──────────────────────
-  async marquerTousPresents() {
+  async marquerTousPresents(): Promise<void> {
+
+    const etudiants = this.etudiants();
+
+    if (etudiants.length === 0) {
+      this.errorMsg.set('لا يوجد طلاب لتسجيل الحضور');
+      return;
+    }
+
     this.saving.set(true);
-    const promises = this.etudiants().map(e =>
-      this.sb.client.from('presences').upsert({
+    this.errorMsg.set('');
+
+    try {
+
+      const rows = etudiants.map(e => ({
         etudiant_id: e.id,
         date: this.selectedDate(),
         statut: 'حاضر'
-      }, { onConflict: 'etudiant_id,date' })
-    );
-    await Promise.all(promises);
-    await this.loadEtudiants();
-    this.successMsg.set('✅ تم تسجيل جميع الطلاب حاضرين!');
-    setTimeout(() => this.successMsg.set(''), 3000);
-    this.saving.set(false);
+      }));
+
+      const { error } = await this.sb.client
+        .from('presences')
+        .upsert(rows, {
+          onConflict: 'etudiant_id,date'
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      await this.loadEtudiants();
+
+      this.successMsg.set(
+        '✅ تم تسجيل جميع الطلاب حاضرين!'
+      );
+
+      setTimeout(() => {
+        this.successMsg.set('');
+      }, 3000);
+
+    } catch (error: any) {
+
+      console.error('Erreur présence:', error);
+
+      this.errorMsg.set(
+        error?.message || 'خطأ في تسجيل الحضور'
+      );
+
+    } finally {
+      this.saving.set(false);
+    }
   }
 
-  // ── Changer date ───────────────────────────────
-  onDateChange(date: string) {
+  onDateChange(date: string): void {
     this.selectedDate.set(date);
     this.loadEtudiants();
   }
 
-  // ── Changer groupe ─────────────────────────────
-  onGroupeChange(groupeId: string) {
+  onGroupeChange(groupeId: string): void {
     this.selectedGroupe.set(groupeId);
     this.loadEtudiants();
   }
 
-  // ── Helpers ────────────────────────────────────
   getStatutClass(statut: string): string {
-    const classes: any = {
+
+    const classes: Record<string, string> = {
       'حاضر': 'btn-present active',
       'غائب': 'btn-absent active',
       'متأخر': 'btn-retard active',
       'معذور': 'btn-excuse active'
     };
+
     return classes[statut] || '';
   }
 
   getTauxPresence(): number {
+
     const total = this.etudiants().length;
-    if (total === 0) return 0;
-    return Math.round((this.totalPresents() / total) * 100);
+
+    if (total === 0) {
+      return 0;
+    }
+
+    return Math.round(
+      (this.totalPresents() / total) * 100
+    );
   }
 
   isToday(): boolean {
-    return this.selectedDate() === new Date().toISOString().split('T')[0];
+    return (
+      this.selectedDate() ===
+      new Date().toISOString().split('T')[0]
+    );
   }
 }

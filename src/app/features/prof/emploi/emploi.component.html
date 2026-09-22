@@ -1,0 +1,351 @@
+<div class="layout" dir="rtl">
+
+  <app-sidebar activePage="emploi-du-temps"></app-sidebar>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">
+          📅 استعمال الزمن
+        </div>
+
+        <div class="topbar-sub">
+          التخطيط الأسبوعي للمجموعات
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      @if (loading()) {
+
+        <div class="loading">
+          جاري التحميل...
+        </div>
+
+      } @else {
+
+        <div class="calendar-wrapper">
+
+          <div class="calendar">
+
+            <!-- HEADER -->
+            <div class="calendar-header">
+
+              <div class="time-header">
+                الوقت
+              </div>
+
+              @for (jour of jours; track jour.id) {
+
+                <div class="day-header">
+                  {{ jour.nom }}
+                </div>
+
+              }
+
+            </div>
+
+            <!-- BODY -->
+            @for (heure of heures; track heure) {
+
+              <div class="calendar-row">
+
+                <div class="time-cell">
+                  {{ heure }}
+                </div>
+
+                @for (jour of jours; track jour.id) {
+
+                  <div
+                    class="calendar-cell"
+                    (click)="
+                      !getPlanning(jour.id, heure)
+                      && ouvrirAjout(jour.id, heure)
+                    "
+                  >
+
+                    @if (getPlanning(jour.id, heure); as item) {
+
+                      @if (getGroupe(item.groupe_id); as groupe) {
+
+                        <div
+                          class="planning-block"
+                          [style.background]="groupe.couleur"
+                          (click)="
+                            $event.stopPropagation();
+                            ouvrirModification(item)
+                          "
+                        >
+
+                          <strong>
+                            {{ groupe.nom }}
+                          </strong>
+
+                          <span>
+                            {{ item.heure_debut.substring(0, 5) }}
+                            -
+                            {{ item.heure_fin.substring(0, 5) }}
+                          </span>
+
+                        </div>
+
+                      }
+
+                    } @else {
+
+                      <!-- Cellule vide -->
+                      <div class="empty-cell"></div>
+
+                    }
+
+                  </div>
+
+                }
+
+              </div>
+
+            }
+
+          </div>
+
+        </div>
+
+      }
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- MODAL -->
+<!-- ================================================= -->
+
+@if (showModal()) {
+
+  <div
+    class="modal-overlay"
+    (click)="fermerModal()"
+  >
+
+    <div
+      class="modal"
+      (click)="$event.stopPropagation()"
+    >
+
+      <div class="modal-header">
+
+        <h3>
+          📅
+          {{ form().id
+            ? 'تعديل الحصة'
+            : 'إضافة حصة'
+          }}
+        </h3>
+
+        <button
+          type="button"
+          class="close"
+          (click)="fermerModal()"
+        >
+          ✕
+        </button>
+
+      </div>
+
+
+      <div class="modal-body">
+
+        <!-- GROUPE -->
+
+        <div class="form-group">
+
+          <label>
+            المجموعة
+          </label>
+
+          <select
+            class="form-input"
+            [value]="form().groupe_id"
+            (change)="updateForm(
+              'groupe_id',
+              $any($event.target).value
+            )"
+          >
+
+            <option value="">
+              اختر المجموعة
+            </option>
+
+            @for (groupe of groupes(); track groupe.id) {
+
+              <option [value]="groupe.id">
+                {{ groupe.nom }}
+              </option>
+
+            }
+
+          </select>
+
+        </div>
+
+
+        <!-- JOUR -->
+
+        <div class="form-group">
+
+          <label>
+            اليوم
+          </label>
+
+          <select
+            class="form-input"
+            [value]="form().jour"
+            (change)="updateForm(
+              'jour',
+              +$any($event.target).value
+            )"
+          >
+
+            @for (jour of jours; track jour.id) {
+
+              <option [value]="jour.id">
+                {{ jour.nom }}
+              </option>
+
+            }
+
+          </select>
+
+        </div>
+
+
+        <!-- HEURES -->
+
+        <div class="time-fields">
+
+          <div class="form-group">
+
+            <label>
+              من
+            </label>
+
+            <input
+              class="form-input"
+              type="time"
+              [value]="form().heure_debut"
+              (input)="updateForm(
+                'heure_debut',
+                $any($event.target).value
+              )"
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label>
+              إلى
+            </label>
+
+            <input
+              class="form-input"
+              type="time"
+              [value]="form().heure_fin"
+              (input)="updateForm(
+                'heure_fin',
+                $any($event.target).value
+              )"
+            >
+
+          </div>
+
+        </div>
+
+
+        <!-- GROUPE SELECTIONNE -->
+
+        @if (form().groupe_id) {
+
+          @if (getGroupe(form().groupe_id); as groupe) {
+
+            <div
+              class="selected-group"
+              [style.border-color]="groupe.couleur"
+            >
+
+              <span
+                class="color-dot"
+                [style.background]="groupe.couleur"
+              ></span>
+
+              <strong>
+                {{ groupe.nom }}
+              </strong>
+
+            </div>
+
+          }
+
+        }
+
+      </div>
+
+
+      <!-- FOOTER -->
+
+      <div class="modal-footer">
+
+        @if (form().id) {
+
+          <button
+            type="button"
+            class="btn-delete"
+            (click)="supprimer({
+              id: form().id,
+              groupe_id: form().groupe_id,
+              jour: form().jour,
+              heure_debut: form().heure_debut,
+              heure_fin: form().heure_fin
+            })"
+          >
+            🗑️ حذف
+          </button>
+
+        }
+
+        <button
+          type="button"
+          class="btn-ghost"
+          (click)="fermerModal()"
+        >
+          إلغاء
+        </button>
+
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="saving()"
+          (click)="sauvegarder()"
+        >
+
+          @if (saving()) {
+            جاري الحفظ...
+          } @else {
+            💾 حفظ
+          }
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+}

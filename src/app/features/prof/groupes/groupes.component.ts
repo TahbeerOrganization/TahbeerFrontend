@@ -1,174 +1,851 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 
-export interface Groupe {
+interface Programme {
   id: string;
   nom: string;
-  type: string;
-  nb_etudiants?: number;
+}
+
+interface Etudiant {
+  id: string;
+  nom: string;
+}
+
+interface Groupe {
+  id: string;
+  nom: string;
+  couleur: string;
+  programme_id: string;
+  etudiants: number;
 }
 
 @Component({
   selector: 'app-groupes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SidebarComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    SidebarComponent
+  ],
   templateUrl: './groupes.component.html',
   styleUrl: './groupes.component.css'
 })
 export class GroupesComponent implements OnInit {
-  groupes = signal<Groupe[]>([]);
-  loading = signal<boolean>(true);
-  saving = signal<boolean>(false);
-  formLoading = signal<boolean>(false);
 
-  showModal = signal<boolean>(false);
-  showDeleteModal = signal<boolean>(false);
-  modeEdit = signal<boolean>(false);
+  // =========================================================
+  // DONNÉES
+  // =========================================================
+
+  programmes = signal<Programme[]>([]);
+  groupes = signal<Groupe[]>([]);
+  etudiants = signal<Etudiant[]>([]);
+
+  programmeSelectionne = signal<Programme | null>(null);
+  groupesProgramme = signal<Groupe[]>([]);
+
+  // IDs des étudiants actuellement sélectionnés
+  selected = signal<string[]>([]);
+
+  // =========================================================
+  // ÉTAT
+  // =========================================================
+
+  loading = signal(true);
+  formLoading = signal(false);
+
+  showModal = signal(false);
+  showDeleteModal = signal(false);
+  modeEdit = signal(false);
 
   groupeToDelete = signal<Groupe | null>(null);
-  form = signal<{ id?: string; nom: string; type: string }>({ nom: '', type: 'رجال' });
 
-  successMsg = signal<string>('');
-  errorMsg = signal<string>('');
+  successMsg = signal('');
+  errorMsg = signal('');
+
+  // =========================================================
+  // FORMULAIRE
+  // =========================================================
+
+  form = signal({
+    id: '',
+    programme_id: '',
+    nom: '',
+    couleur: '#3b82f6'
+  });
+
+  couleurs = [
+    '#3b82f6',
+    '#22c55e',
+    '#8b5cf6',
+    '#f97316',
+    '#ef4444',
+    '#eab308',
+    '#06b6d4',
+    '#ec4899'
+  ];
 
   constructor(private sb: SupabaseService) {}
 
+  // =========================================================
+  // INIT
+  // =========================================================
+
   ngOnInit(): void {
-    this.loadGroupes();
+    this.loadData();
   }
 
-  async loadGroupes(): Promise<void> {
+  // =========================================================
+  // CHARGER LES DONNÉES
+  // =========================================================
+
+  async loadData(): Promise<void> {
+
     this.loading.set(true);
+    this.errorMsg.set('');
+
     try {
-      const { data, error } = await this.sb.client
-        .from('groupes')
-        .select('*, profiles(count)')
+
+      // =====================================================
+      // PROGRAMMES
+      // =====================================================
+
+      const {
+        data: programmes,
+        error: programmesError
+      } = await this.sb.client
+        .from('programmes')
+        .select('id, nom')
         .order('nom');
 
-      if (error) throw error;
+      if (programmesError) {
+        throw programmesError;
+      }
 
-      const formattedData = (data || []).map((g: any) => ({
-        id: g.id,
-        nom: g.nom,
-        type: g.type || 'عام',
-        nb_etudiants: g.profiles ? g.profiles[0]?.count || 0 : 0
-      }));
+      this.programmes.set(
+        (programmes || []) as Programme[]
+      );
 
-      this.groupes.set(formattedData);
-    } catch (err: any) {
-      this.errorMsg.set(err.message || 'خطأ في تحميل المجموعات');
+      // =====================================================
+      // GROUPES
+      // =====================================================
+
+      const {
+        data: groupes,
+        error: groupesError
+      } = await this.sb.client
+        .from('groupes')
+        .select('id, nom, programme_id, couleur')
+        .order('nom');
+
+      if (groupesError) {
+        throw groupesError;
+      }
+
+      // =====================================================
+      // RELATIONS GROUPE / ÉTUDIANT
+      // =====================================================
+
+      const {
+        data: relations,
+        error: relationsError
+      } = await this.sb.client
+        .from('groupe_etudiants')
+        .select('groupe_id, etudiant_id');
+
+      if (relationsError) {
+        throw relationsError;
+      }
+
+      // =====================================================
+      // COMPTER LES ÉTUDIANTS
+      // =====================================================
+
+      const compteurs = new Map<string, number>();
+
+      for (const relation of relations || []) {
+
+        const groupeId = relation.groupe_id;
+
+        compteurs.set(
+          groupeId,
+          (compteurs.get(groupeId) || 0) + 1
+        );
+      }
+
+      // =====================================================
+      // FORMAT GROUPES
+      // =====================================================
+
+      const groupesFormates: Groupe[] =
+        (groupes || []).map((g: any) => ({
+          id: g.id,
+          nom: g.nom,
+          couleur: g.couleur || '#3b82f6',
+          programme_id: g.programme_id,
+          etudiants: compteurs.get(g.id) || 0
+        }));
+
+      this.groupes.set(groupesFormates);
+
+      // =====================================================
+      // ÉTUDIANTS
+      // =====================================================
+
+      const {
+        data: etudiants,
+        error: etudiantsError
+      } = await this.sb.client
+        .from('profiles')
+        .select('id, nom')
+        .eq('role', 'etudiant')
+        .order('nom');
+
+      if (etudiantsError) {
+        throw etudiantsError;
+      }
+
+      this.etudiants.set(
+        (etudiants || []) as Etudiant[]
+      );
+
+      // =====================================================
+      // ACTUALISER
+      // =====================================================
+
+      this.actualiserGroupesProgramme();
+
+    } catch (error: any) {
+
+      console.error(
+        'Erreur loadData:',
+        error
+      );
+
+      this.errorMsg.set(
+        error?.message ||
+        'خطأ في تحميل البيانات'
+      );
+
     } finally {
+
       this.loading.set(false);
     }
   }
 
-  getTypeIcon(type: string): string {
-    switch (type) {
-      case 'رجال': return '👨';
-      case 'نساء': return '👩';
-      case 'أطفال': return '🧒';
-      default: return '👥';
-    }
+  // =========================================================
+  // PROGRAMME
+  // =========================================================
+
+  selectionnerProgramme(
+    programme: Programme
+  ): void {
+
+    this.programmeSelectionne.set(programme);
+
+    this.actualiserGroupesProgramme();
+
+    this.errorMsg.set('');
+    this.successMsg.set('');
   }
 
-  getTypeBadge(type: string): string {
-    switch (type) {
-      case 'رجال': return 'badge-blue';
-      case 'نساء': return 'badge-purple';
-      case 'أطفال': return 'badge-green';
-      default: return 'badge-gray';
-    }
+  retourProgrammes(): void {
+
+    this.programmeSelectionne.set(null);
+
+    this.groupesProgramme.set([]);
+
+    this.selected.set([]);
+
+    this.fermerModal();
+
+    this.errorMsg.set('');
+    this.successMsg.set('');
   }
 
-  ouvrirAjout(): void {
+  // =========================================================
+  // GROUPES DU PROGRAMME
+  // =========================================================
+
+  actualiserGroupesProgramme(): void {
+
+    const programme =
+      this.programmeSelectionne();
+
+    if (!programme) {
+
+      this.groupesProgramme.set([]);
+
+      return;
+    }
+
+    this.groupesProgramme.set(
+      this.groupes().filter(
+        groupe =>
+          groupe.programme_id === programme.id
+      )
+    );
+  }
+
+  compterGroupesProgramme(
+    programmeId: string
+  ): number {
+
+    return this.groupes().filter(
+      groupe =>
+        groupe.programme_id === programmeId
+    ).length;
+  }
+
+  // =========================================================
+  // AJOUT GROUPE
+  // =========================================================
+
+  ouvrirAjoutGroupe(): void {
+
+    const programme =
+      this.programmeSelectionne();
+
+    if (!programme) {
+
+      this.errorMsg.set(
+        'يرجى اختيار البرنامج'
+      );
+
+      return;
+    }
+
     this.modeEdit.set(false);
-    this.form.set({ nom: '', type: 'رجال' });
+
+    this.form.set({
+      id: '',
+      programme_id: programme.id,
+      nom: '',
+      couleur: '#3b82f6'
+    });
+
+    // مهم: المجموعة الجديدة تبدأ بلا طلاب
+    this.selected.set([]);
+
     this.errorMsg.set('');
+    this.successMsg.set('');
+
     this.showModal.set(true);
   }
 
-  ouvrirEdit(groupe: Groupe): void {
+  // =========================================================
+  // MODIFIER GROUPE
+  // =========================================================
+
+  async ouvrirEditGroupe(
+    groupe: Groupe
+  ): Promise<void> {
+
     this.modeEdit.set(true);
-    this.form.set({ id: groupe.id, nom: groupe.nom, type: groupe.type });
+
+    this.form.set({
+      id: groupe.id,
+      programme_id: groupe.programme_id,
+      nom: groupe.nom,
+      couleur: groupe.couleur
+    });
+
+    // نفرغ الاختيار قبل تحميل الطلاب
+    this.selected.set([]);
+
     this.errorMsg.set('');
+    this.successMsg.set('');
+
     this.showModal.set(true);
+
+    try {
+
+      const {
+        data,
+        error
+      } = await this.sb.client
+        .from('groupe_etudiants')
+        .select('etudiant_id')
+        .eq('groupe_id', groupe.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // نحيد التكرار احتياطياً
+      const ids: string[] = [
+        ...new Set(
+          (data || [])
+            .map((item: any) => item.etudiant_id)
+            .filter(
+              (id: any): id is string =>
+                typeof id === 'string'
+            )
+        )
+      ];
+
+      // هادو هما الطلاب لي checked فالـ modal
+      this.selected.set(ids);
+
+    } catch (error: any) {
+
+      console.error(
+        'Erreur chargement étudiants:',
+        error
+      );
+
+      this.errorMsg.set(
+        error?.message ||
+        'تعذر تحميل طلاب المجموعة'
+      );
+    }
   }
+
+  // =========================================================
+  // FERMER MODAL
+  // =========================================================
 
   fermerModal(): void {
+
     this.showModal.set(false);
+
+    this.selected.set([]);
+
+    this.form.set({
+      id: '',
+      programme_id: '',
+      nom: '',
+      couleur: '#3b82f6'
+    });
+
+    this.modeEdit.set(false);
   }
 
-  updateForm(field: string, value: string): void {
-    this.form.update(f => ({ ...f, [field]: value }));
+  // =========================================================
+  // FORMULAIRE
+  // =========================================================
+
+  updateForm(
+    field: string,
+    value: string
+  ): void {
+
+    this.form.update(
+      current => ({
+        ...current,
+        [field]: value
+      })
+    );
   }
 
-  async soumettre(): Promise<void> {
-    const data = this.form();
-    if (!data.nom.trim()) {
-      this.errorMsg.set('الرجاء إدخال اسم المجموعة');
+  // =========================================================
+  // SÉLECTION ÉTUDIANT
+  // =========================================================
+
+  toggleEtudiant(
+    id: string
+  ): void {
+
+    this.selected.update(
+      current => {
+
+        // إذا كان مختار -> نحيدوه
+        if (current.includes(id)) {
+
+          return current.filter(
+            item => item !== id
+          );
+        }
+
+        // إذا ماكانش مختار -> نضيفوه
+        return [
+          ...current,
+          id
+        ];
+      }
+    );
+  }
+
+  // =========================================================
+  // VÉRIFIER SI ÉTUDIANT SÉLECTIONNÉ
+  // =========================================================
+
+  estSelectionne(
+    id: string
+  ): boolean {
+
+    return this.selected().includes(id);
+  }
+
+  // =========================================================
+  // ENREGISTRER GROUPE
+  // =========================================================
+
+async soumettre(): Promise<void> {
+  const f = this.form();
+  const programme = this.programmeSelectionne();
+
+  // =====================================================
+  // VALIDATION
+  // =====================================================
+
+  if (!programme) {
+    this.errorMsg.set('يرجى اختيار البرنامج');
+    return;
+  }
+
+  const nom = f.nom.trim();
+
+  if (!nom) {
+    this.errorMsg.set('يرجى إدخال اسم المجموعة');
+    return;
+  }
+
+  if (this.formLoading()) {
+    return;
+  }
+
+  this.formLoading.set(true);
+  this.errorMsg.set('');
+  this.successMsg.set('');
+
+  try {
+    let groupeId: string;
+
+    // =====================================================
+    // 1. CRÉER OU MODIFIER LE GROUPE
+    // =====================================================
+
+    if (this.modeEdit()) {
+
+      groupeId = f.id;
+
+      if (!groupeId) {
+        throw new Error('ID du groupe introuvable');
+      }
+
+      const { error } = await this.sb.client
+        .from('groupes')
+        .update({
+          nom: nom,
+          couleur: f.couleur,
+          programme_id: programme.id
+        })
+        .eq('id', groupeId);
+
+      if (error) {
+        throw error;
+      }
+
+    } else {
+
+      const {
+        data,
+        error
+      } = await this.sb.client
+        .from('groupes')
+        .insert({
+          programme_id: programme.id,
+          nom: nom,
+          couleur: f.couleur
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.id) {
+        throw new Error(
+          'Impossible de récupérer l\'ID du groupe'
+        );
+      }
+
+      groupeId = data.id;
+    }
+
+    // =====================================================
+    // 2. PRENDRE LA LISTE ACTUELLE DES ÉTUDIANTS
+    // =====================================================
+
+    const selectedStudents: string[] = Array.from(
+      new Set(this.selected())
+    );
+
+    console.log(
+      'GROUPE ID:',
+      groupeId
+    );
+
+    console.log(
+      'ETUDIANTS SÉLECTIONNÉS:',
+      selectedStudents
+    );
+
+    // =====================================================
+    // 3. SUPPRIMER TOUTES LES ANCIENNES RELATIONS
+    // =====================================================
+
+    const {
+      error: deleteError
+    } = await this.sb.client
+      .from('groupe_etudiants')
+      .delete()
+      .eq('groupe_id', groupeId);
+
+    if (deleteError) {
+      console.error(
+        'Erreur suppression relations:',
+        deleteError
+      );
+
+      throw deleteError;
+    }
+
+    // =====================================================
+    // 4. RÉINSÉRER UNIQUEMENT LES ÉTUDIANTS SÉLECTIONNÉS
+    // =====================================================
+
+    if (selectedStudents.length > 0) {
+
+      const rows: {
+        groupe_id: string;
+        etudiant_id: string;
+      }[] = selectedStudents.map(
+        (etudiantId: string) => ({
+          groupe_id: groupeId,
+          etudiant_id: etudiantId
+        })
+      );
+
+      console.log(
+        'ROWS À INSÉRER:',
+        rows
+      );
+
+      const {
+        data: insertedRows,
+        error: insertError
+      } = await this.sb.client
+        .from('groupe_etudiants')
+        .insert(rows)
+        .select();
+
+      if (insertError) {
+
+        console.error(
+          'ERREUR INSERTION RELATIONS:',
+          insertError
+        );
+
+        console.error(
+          'ROWS:',
+          rows
+        );
+
+        throw insertError;
+      }
+
+      console.log(
+        'RELATIONS INSÉRÉES:',
+        insertedRows
+      );
+    }
+
+    // =====================================================
+    // 5. SUCCÈS
+    // =====================================================
+
+    this.successMsg.set(
+      this.modeEdit()
+        ? 'تم تعديل المجموعة بنجاح'
+        : 'تم إنشاء المجموعة بنجاح'
+    );
+
+    this.fermerModal();
+
+    await this.loadData();
+
+    this.actualiserGroupesProgramme();
+
+    setTimeout(() => {
+      this.successMsg.set('');
+    }, 3000);
+
+  } catch (error: any) {
+
+    console.error(
+      'ERREUR SAUVEGARDE GROUPE:',
+      error
+    );
+
+    console.error(
+      'CODE:',
+      error?.code
+    );
+
+    console.error(
+      'MESSAGE:',
+      error?.message
+    );
+
+    console.error(
+      'DETAILS:',
+      error?.details
+    );
+
+    console.error(
+      'HINT:',
+      error?.hint
+    );
+
+    if (error?.code === '23505') {
+
+      this.errorMsg.set(
+        'حدث تكرار في علاقة الطالب بالمجموعة. تحقق من قاعدة البيانات.'
+      );
+
+    } else {
+
+      this.errorMsg.set(
+        error?.message ||
+        'حدث خطأ أثناء حفظ المجموعة'
+      );
+    }
+
+  } finally {
+
+    this.formLoading.set(false);
+  }
+}
+
+
+  // =========================================================
+  // CONFIRMATION SUPPRESSION
+  // =========================================================
+
+  confirmerSuppression(
+    groupe: Groupe
+  ): void {
+
+    this.groupeToDelete.set(groupe);
+
+    this.showDeleteModal.set(true);
+
+    this.errorMsg.set('');
+  }
+
+  // =========================================================
+  // ANNULER SUPPRESSION
+  // =========================================================
+
+  annulerSuppression(): void {
+
+    this.showDeleteModal.set(false);
+
+    this.groupeToDelete.set(null);
+  }
+
+  // =========================================================
+  // SUPPRIMER GROUPE
+  // =========================================================
+
+  async supprimerGroupe(): Promise<void> {
+
+    const groupe =
+      this.groupeToDelete();
+
+    if (!groupe) {
+      return;
+    }
+
+    if (this.formLoading()) {
       return;
     }
 
     this.formLoading.set(true);
     this.errorMsg.set('');
+    this.successMsg.set('');
 
     try {
-      if (this.modeEdit()) {
-        const { error } = await this.sb.client
-          .from('groupes')
-          .update({ nom: data.nom, type: data.type })
-          .eq('id', data.id);
 
-        if (error) throw error;
-        this.successMsg.set('تم تعديل المجموعة بنجاح');
-      } else {
-        const { error } = await this.sb.client
-          .from('groupes')
-          .insert({ nom: data.nom, type: data.type });
+      // =====================================================
+      // SUPPRIMER RELATIONS
+      // =====================================================
 
-        if (error) throw error;
-        this.successMsg.set('تم إنشاء المجموعة بنجاح');
+      const {
+        error: relationError
+      } = await this.sb.client
+        .from('groupe_etudiants')
+        .delete()
+        .eq('groupe_id', groupe.id);
+
+      if (relationError) {
+        throw relationError;
       }
 
-      this.fermerModal();
-      await this.loadGroupes();
-      setTimeout(() => this.successMsg.set(''), 3000);
-    } catch (err: any) {
-      this.errorMsg.set(err.message || 'حدث خطأ أثناء الحفظ');
-    } finally {
-      this.formLoading.set(false);
-    }
-  }
+      // =====================================================
+      // SUPPRIMER GROUPE
+      // =====================================================
 
-  confirmerSuppression(groupe: Groupe): void {
-    this.groupeToDelete.set(groupe);
-    this.showDeleteModal.set(true);
-  }
-
-  async supprimerGroupe(): Promise<void> {
-    const target = this.groupeToDelete();
-    if (!target) return;
-
-    this.formLoading.set(true);
-    try {
-      const { error } = await this.sb.client
+      const {
+        error: groupeError
+      } = await this.sb.client
         .from('groupes')
         .delete()
-        .eq('id', target.id);
+        .eq('id', groupe.id);
 
-      if (error) throw error;
+      if (groupeError) {
+        throw groupeError;
+      }
 
-      this.successMsg.set('تم حذف المجموعة بنجاح');
+      // =====================================================
+      // NETTOYAGE
+      // =====================================================
+
       this.showDeleteModal.set(false);
-      await this.loadGroupes();
-      setTimeout(() => this.successMsg.set(''), 3000);
-    } catch (err: any) {
-      this.errorMsg.set(err.message || 'تعذر حذف المجموعة');
+
+      this.groupeToDelete.set(null);
+
+      // =====================================================
+      // RECHARGER
+      // =====================================================
+
+      await this.loadData();
+
+      this.actualiserGroupesProgramme();
+
+      // =====================================================
+      // MESSAGE
+      // =====================================================
+
+      this.successMsg.set(
+        'تم حذف المجموعة بنجاح'
+      );
+
+      setTimeout(() => {
+
+        this.successMsg.set('');
+
+      }, 3000);
+
+    } catch (error: any) {
+
+      console.error(
+        'Erreur suppression:',
+        error
+      );
+
+      this.errorMsg.set(
+        error?.message ||
+        'تعذر حذف المجموعة'
+      );
+
     } finally {
+
       this.formLoading.set(false);
     }
   }

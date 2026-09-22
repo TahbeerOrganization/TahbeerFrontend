@@ -1,179 +1,518 @@
 <div class="layout" dir="rtl">
+  
+  <app-sidebar activePage="groupes"></app-sidebar>
 
-  <!-- ══ SIDEBAR ══════════════════════════════════ -->
-  <app-sidebar activePage="etudiants"></app-sidebar>
-
-  <!-- ══ MAIN CONTENT ═════════════════════════════ -->
   <main class="main">
 
-    <!-- ── TOPBAR ────────────────────────────── -->
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">🗂️ المجموعات</div>
-        <div class="topbar-sub">{{ groupes().length }} مجموعة</div>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">🗂️ البرامج والمجموعات</div>
+
+    @if (!programmeSelectionne()) {
+      <div class="topbar-sub">
+        {{ programmes().length }} برنامج
       </div>
-      <button class="btn-primary" (click)="ouvrirAjout()">
-        + إنشاء مجموعة
-      </button>
-    </div>
+    } @else {
+      <div class="topbar-sub">
+        {{ programmeSelectionne()?.nom }}
+      </div>
+    }
+  </div>
 
-    <!-- ── CONTENT ───────────────────────────── -->
-    <div class="content">
-
-      <!-- Alerts -->
-      @if (successMsg()) {
-        <div class="alert alert-success">{{ successMsg() }}</div>
-      }
-      @if (errorMsg()) {
-        <div class="alert alert-error">{{ errorMsg() }}</div>
-      }
-
-      <!-- Groupes Grid -->
-      @if (loading()) {
-        <div class="loading-wrap">
-          <div class="spinner"></div>
-          <p>جاري التحميل...</p>
-        </div>
-      } @else if (groupes().length === 0) {
-        <div class="empty-state">
-          <div class="empty-icon">🗂️</div>
-          <p>لا توجد مجموعات بعد</p>
-          <button class="btn-primary" (click)="ouvrirAjout()">
-            + إنشاء أول مجموعة
-          </button>
-        </div>
-      } @else {
-        <div class="groupes-grid">
-          @for (g of groupes(); track g.id) {
-            <div class="groupe-card">
-              <div class="groupe-header">
-                <div class="groupe-icon">{{ getTypeIcon(g.type) }}</div>
-                <div class="groupe-actions">
-                  <button class="icon-btn btn-edit" (click)="ouvrirEdit(g)" title="تعديل">✏️</button>
-                  <button class="icon-btn btn-delete" (click)="confirmerSuppression(g)" [disabled]="(g.nb_etudiants ?? 0) > 0" title="حذف">🗑️</button>
-                </div>
-              </div>
-              <div class="groupe-nom">{{ g.nom }}</div>
-              <div class="groupe-type">
-                <span class="badge" [class]="getTypeBadge(g.type)">{{ g.type }}</span>
-              </div>
-              <div class="groupe-stats">
-                <div class="gs-item">
-                  <div class="gs-val">{{ g.nb_etudiants ?? 0 }}</div>
-                  <div class="gs-label">طالب</div>
-                </div>
-              </div>
-              <a routerLink="/prof/etudiants" class="groupe-link">عرض الطلاب ←</a>
-            </div>
-          }
-        </div>
-      }
-
-    </div>
-
-  </main>
+  @if (programmeSelectionne()) {
+    <button class="btn-ghost" (click)="retourProgrammes()">
+      ← جميع البرامج
+    </button>
+  }
 </div>
 
-<!-- ══ MODAL AJOUT/MODIFICATION ══════════════════ -->
-@if (showModal()) {
-  <div class="modal-overlay" (click)="fermerModal()">
-    <div class="modal" (click)="$event.stopPropagation()">
+<div class="content">
 
-      <div class="modal-header">
-        <h3>{{ modeEdit() ? '✏️ تعديل المجموعة' : '+ إنشاء مجموعة جديدة' }}</h3>
-        <button class="modal-close" (click)="fermerModal()">✕</button>
+  <!-- ================= PROGRAMMES ================= -->
+
+  @if (!programmeSelectionne()) {
+
+    <div class="section-title">
+      <div>
+        <h2>البرامج</h2>
+        <p>اختر البرنامج لإدارة مجموعاته</p>
+      </div>
+    </div>
+
+    @if (loading()) {
+
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <p>جاري التحميل...</p>
       </div>
 
-      <div class="modal-body">
-        @if (errorMsg()) {
-          <div class="alert alert-error">⚠️ {{ errorMsg() }}</div>
+    } @else {
+
+      <div class="programmes-grid">
+
+        @for (p of programmes(); track p.id) {
+
+          <div
+            class="programme-card"
+            (click)="selectionnerProgramme(p)"
+          >
+
+            <div class="programme-icon">
+              📚
+            </div>
+
+            <div class="programme-card-content">
+              <h3>{{ p.nom }}</h3>
+
+              <p>
+                {{ compterGroupesProgramme(p.id) }}
+                مجموعة
+              </p>
+            </div>
+
+            <div class="programme-arrow">
+              ←
+            </div>
+
+          </div>
+
         }
 
-        <div class="form-group">
-          <label>اسم المجموعة <span class="required">*</span></label>
-          <input
-            class="form-input"
-            placeholder="أدخل اسم المجموعة"
-            [value]="form().nom"
-            (input)="updateForm('nom', $any($event.target).value)"
-          />
-        </div>
-
-        <div class="form-group">
-          <label>نوع المجموعة <span class="required">*</span></label>
-          <div class="type-select">
-            <div 
-              class="type-btn" 
-              [class.selected]="form().type === 'حفظ'"
-              (click)="updateForm('type', 'حفظ')"
-            >
-              <span class="type-icon">📖</span>
-              <span>حفظ</span>
-            </div>
-            <div 
-              class="type-btn" 
-              [class.selected]="form().type === 'مراجعة'"
-              (click)="updateForm('type', 'مراجعة')"
-            >
-              <span class="type-icon">🔄</span>
-              <span>مراجعة</span>
-            </div>
-            <div 
-              class="type-btn" 
-              [class.selected]="form().type === 'تثبيت'"
-              (click)="updateForm('type', 'تثبيت')"
-            >
-              <span class="type-icon">📌</span>
-              <span>تثبيت</span>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn-ghost" (click)="fermerModal()">إلغاء</button>
-        <button class="btn-primary" (click)="soumettre()" [disabled]="formLoading()">
-          @if (formLoading()) {
-            <span class="spinner-sm"></span> جاري الحفظ...
-          } @else {
-            {{ modeEdit() ? '💾 حفظ التعديلات' : '+ إنشاء المجموعة' }}
-          }
+      @if (!programmes().length) {
+
+        <div class="empty-state">
+          <div class="empty-icon">📚</div>
+          <p>لا توجد برامج</p>
+        </div>
+
+      }
+
+    }
+
+  }
+
+
+  <!-- ================= PROGRAMME DETAILS ================= -->
+
+  @if (programmeSelectionne()) {
+
+    <div class="programme-detail">
+
+      <!-- HEADER -->
+
+      <div class="programme-detail-header">
+
+        <div class="programme-detail-info">
+
+          <div class="big-programme-icon">
+            📚
+          </div>
+
+          <div>
+            <h2>
+              {{ programmeSelectionne()?.nom }}
+            </h2>
+
+            <p class="programme-subtitle">
+              {{ groupesProgramme().length }}
+              مجموعة
+            </p>
+          </div>
+
+        </div>
+
+        <button
+          class="btn-primary"
+          (click)="ouvrirAjoutGroupe()"
+        >
+          + إضافة مجموعة
         </button>
+
+      </div>
+
+
+      <!-- ================= GROUPES ================= -->
+
+      @if (groupesProgramme().length) {
+
+        <div class="groupes-grid">
+
+          @for (g of groupesProgramme(); track g.id) {
+
+            <div
+              class="groupe-card"
+              [style.border-top-color]="g.couleur"
+            >
+
+              <div class="groupe-header">
+
+                <span
+                  class="groupe-color-dot"
+                  [style.background]="g.couleur"
+                ></span>
+
+                <h3>
+                  {{ g.nom }}
+                </h3>
+
+                <div class="groupe-actions">
+
+                  <button
+                    class="icon-btn btn-edit"
+                    (click)="ouvrirEditGroupe(g)"
+                    title="تعديل"
+                  >
+                    ✏️
+                  </button>
+
+                  <button
+                    class="icon-btn btn-delete"
+                    (click)="confirmerSuppression(g)"
+                    title="حذف"
+                  >
+                    🗑️
+                  </button>
+
+                </div>
+
+              </div>
+
+              <div
+                class="groupe-color-line"
+                [style.background]="g.couleur"
+              ></div>
+
+              <div class="groupe-stats">
+                👥
+                <strong>{{ g.etudiants }}</strong>
+                طالب
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+      } @else {
+
+        <div class="empty-state">
+
+          <div class="empty-icon">
+            👥
+          </div>
+
+          <h3>
+            لا توجد مجموعات
+          </h3>
+
+          <p>
+            هذا البرنامج لا يحتوي على مجموعات بعد
+          </p>
+
+          <button
+            class="btn-primary"
+            (click)="ouvrirAjoutGroupe()"
+          >
+            + إضافة أول مجموعة
+          </button>
+
+        </div>
+
+      }
+
+    </div>
+
+  }
+
+</div>
+
+  </main>
+
+</div>
+
+<!-- ================================================= -->
+
+<!-- MODAL AJOUT / EDIT GROUPE -->
+
+<!-- ================================================= -->
+
+@if (showModal()) {
+
+  <div
+    class="modal-overlay"
+    (click)="fermerModal()"
+  >
+
+<div
+  class="modal modal-large"
+  (click)="$event.stopPropagation()"
+>
+
+  <div class="modal-header">
+
+    <h3>
+      {{ modeEdit()
+        ? '✏️ تعديل المجموعة'
+        : '+ إضافة مجموعة'
+      }}
+    </h3>
+
+    <button
+      class="modal-close"
+      (click)="fermerModal()"
+    >
+      ✕
+    </button>
+
+  </div>
+
+
+  <div class="modal-body">
+
+    @if (errorMsg()) {
+
+      <div class="alert alert-error">
+        {{ errorMsg() }}
+      </div>
+
+    }
+
+
+    <!-- PROGRAMME -->
+
+    <div class="form-group">
+
+      <label>البرنامج</label>
+
+      <div class="selected-programme">
+        <span>📚</span>
+
+        <strong>
+          {{ programmeSelectionne()?.nom }}
+        </strong>
       </div>
 
     </div>
+
+
+    <!-- NOM GROUPE -->
+
+    <div class="form-group">
+
+      <label>
+        اسم المجموعة *
+      </label>
+
+      <input
+        class="form-input"
+        type="text"
+        placeholder="مثال: مجموعة الصباح"
+        [value]="form().nom"
+        (input)="updateForm(
+          'nom',
+          $any($event.target).value
+        )"
+      >
+
+    </div>
+
+
+    <!-- COULEUR -->
+
+    <div class="form-group">
+
+      <label>
+        لون المجموعة
+      </label>
+
+      <div class="colors">
+
+        @for (c of couleurs; track c) {
+
+          <button
+            type="button"
+            class="color-btn"
+            [style.background]="c"
+            [class.selected]="form().couleur === c"
+            (click)="updateForm('couleur', c)"
+          ></button>
+
+        }
+
+      </div>
+
+    </div>
+
+
+    <!-- ETUDIANTS -->
+
+    <div class="form-group">
+
+      <label>
+
+        الطلاب
+
+        <span class="selected-count">
+          {{ selected().length }} محدد
+        </span>
+
+      </label>
+
+      <div class="students-list">
+
+        @for (e of etudiants(); track e.id) {
+
+          <label
+            class="student-item"
+            [class.checked]="estSelectionne(e.id)"
+          >
+
+            <input
+              type="checkbox"
+              [checked]="estSelectionne(e.id)"
+              (change)="toggleEtudiant(e.id)"
+            >
+
+            <div class="student-info">
+
+              <strong>
+                {{ e.nom }}
+              </strong>
+
+            </div>
+
+            @if (estSelectionne(e.id)) {
+              <span>✓</span>
+            }
+
+          </label>
+
+        }
+
+        @if (!etudiants().length) {
+
+          <div class="empty-students">
+            لا يوجد طلاب
+          </div>
+
+        }
+
+      </div>
+
+    </div>
+
   </div>
+
+
+  <!-- FOOTER -->
+
+  <div class="modal-footer">
+
+    <button
+      class="btn-ghost"
+      (click)="fermerModal()"
+    >
+      إلغاء
+    </button>
+
+    <button
+      class="btn-primary"
+      (click)="soumettre()"
+      [disabled]="formLoading()"
+    >
+
+      @if (formLoading()) {
+
+        جاري الحفظ...
+
+      } @else {
+
+        {{ modeEdit()
+          ? '💾 حفظ التعديلات'
+          : '+ إنشاء المجموعة'
+        }}
+
+      }
+
+    </button>
+
+  </div>
+
+</div>
+
+  </div>
+
 }
 
-<!-- ══ MODAL SUPPRESSION ══════════════════════════ -->
+<!-- ================================================= -->
+
+<!-- MODAL DELETE -->
+
+<!-- ================================================= -->
+
 @if (showDeleteModal()) {
-  <div class="modal-overlay" (click)="showDeleteModal.set(false)">
-    <div class="modal modal-sm" (click)="$event.stopPropagation()">
 
-      <div class="modal-header">
-        <h3>🗑️ تأكيد الحذف</h3>
-        <button class="modal-close" (click)="showDeleteModal.set(false)">✕</button>
-      </div>
+  <div
+    class="modal-overlay"
+    (click)="showDeleteModal.set(false)"
+  >
 
-      <div class="modal-body">
-        <div class="delete-confirm">
-          <div class="delete-icon">⚠️</div>
-          <p>هل أنت متأكد من حذف المجموعة <strong>{{ groupeToDelete()?.nom }}</strong>؟</p>
-          <p class="delete-warning">لا يمكن التراجع عن هذا الإجراء.</p>
-        </div>
-      </div>
+<div
+  class="modal modal-sm"
+  (click)="$event.stopPropagation()"
+>
 
-      <div class="modal-footer">
-        <button class="btn-ghost" (click)="showDeleteModal.set(false)">إلغاء</button>
-        <button class="btn-danger" (click)="supprimerGroupe()" [disabled]="formLoading()">
-          @if (formLoading()) {
-            جاري الحذف...
-          } @else {
-            🗑️ نعم، احذف المجموعة
-          }
-        </button>
-      </div>
+  <div class="modal-header">
 
-    </div>
+    <h3>
+      🗑️ حذف المجموعة
+    </h3>
+
+    <button
+      class="modal-close"
+      (click)="showDeleteModal.set(false)"
+    >
+      ✕
+    </button>
+
   </div>
+
+  <div class="modal-body">
+
+    <p>
+      هل تريد حذف المجموعة
+      <strong>
+        {{ groupeToDelete()?.nom }}
+      </strong>؟
+    </p>
+
+  </div>
+
+  <div class="modal-footer">
+
+    <button
+      class="btn-ghost"
+      (click)="showDeleteModal.set(false)"
+    >
+      إلغاء
+    </button>
+
+    <button
+      class="btn-danger"
+      (click)="supprimerGroupe()"
+      [disabled]="formLoading()"
+    >
+      نعم، احذف
+    </button>
+
+  </div>
+
+</div>
+
+  </div>
+
 }

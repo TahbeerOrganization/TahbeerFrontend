@@ -15,7 +15,7 @@
         </div>
       </div>
       <button class="btn-primary" (click)="ouvrirAjout()">
-        + إضافة طالب
+         إضافة طالب
       </button>
     </div>
 
@@ -145,22 +145,6 @@
                 <td>
                   <div class="actions">
 
-                    <!-- Hifd -->
-                    <button
-                      class="action-btn btn-hifd"
-                      (click)="ouvrirHifd(e)"
-                      title="تتبع الحفظ"
-                    >
-                      📖
-                    </button>
-                    <button 
-                      class="action-btn btn-payment" 
-                      (click)="ouvrirPaiement(e)" 
-                      title="الأداءات" 
-                      > 
-                        💰 
-                      </button>
-
                     <!-- Modifier -->
                     <button
                       class="action-btn btn-edit"
@@ -202,7 +186,7 @@
     <div class="modal" (click)="$event.stopPropagation()">
 
       <div class="modal-header">
-        <h3>{{ modeEdit() ? '✏️ تعديل الطالب' : '+ إضافة طالب جديد' }}</h3>
+        <h3>{{ modeEdit() ? ' تعديل الطالب' : ' إضافة طالب جديد' }}</h3>
         <button class="modal-close" (click)="fermerModal()">✕</button>
       </div>
 
@@ -298,7 +282,7 @@
           @if (formLoading()) {
             <span class="spinner-sm"></span> جاري الحفظ...
           } @else {
-            {{ modeEdit() ? '💾 حفظ التعديلات' : '+ إضافة الطالب' }}
+            {{ modeEdit() ? ' حفظ التعديلات' : ' إضافة الطالب' }}
           }
         </button>
       </div>
@@ -313,7 +297,7 @@
     <div class="modal modal-sm" (click)="$event.stopPropagation()">
 
       <div class="modal-header">
-        <h3>🗑️ تأكيد الحذف</h3>
+        <h3> تأكيد الحذف</h3>
         <button class="modal-close"
           (click)="showDeleteModal.set(false)">✕</button>
       </div>
@@ -327,7 +311,7 @@
           </p>
           <p class="delete-warning">
             سيتم حذف جميع بياناته (الحضور، السور، الواجبات)
-            ولا يمكن التراجع عن هذا الإجراء.
+            ولا يمكن التراجع عن هذا الإجراء
           </p>
         </div>
       </div>
@@ -345,7 +329,7 @@
           @if (formLoading()) {
             جاري الحذف...
           } @else {
-            🗑️ نعم، احذف الطالب
+             نعم، احذف الطالب
           }
         </button>
       </div>
