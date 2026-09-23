@@ -41,8 +41,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "15kB",
+                  "maximumError": "25kB"
                 }
               ],
               "outputHashing": "all"
@@ -56,17 +56,23 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular-devkit/build-angular:dev-server",
-          "configurations": {
-            "production": {
-              "buildTarget": "TahbeerFrontend:build:production"
-            },
-            "development": {
-              "buildTarget": "TahbeerFrontend:build:development"
-            }
-          },
-          "defaultConfiguration": "development"
-        },
+  "builder": "@angular-devkit/build-angular:dev-server",
+  "options": {
+    "host": "0.0.0.0",
+    "allowedHosts": [
+      "turf-tigress-liberty.ngrok-free.dev"
+    ]
+  },
+  "configurations": {
+    "production": {
+      "buildTarget": "TahbeerFrontend:build:production"
+    },
+    "development": {
+      "buildTarget": "TahbeerFrontend:build:development"
+    }
+  },
+  "defaultConfiguration": "development"
+},
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n"
         },

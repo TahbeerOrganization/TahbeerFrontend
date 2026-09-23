@@ -35,23 +35,12 @@ export const routes: Routes = [
           import('./features/prof/presences/presences.component')
             .then(m => m.PresencesComponent)
       },
-      {
-        path: 'sourates',
-        loadComponent: () =>
-          import('./features/prof/sourates/sourates.component')
-            .then(m => m.SouratesComponent)
-      },
+      
       {
         path: 'devoirs',
         loadComponent: () =>
           import('./features/prof/devoirs/devoirs.component')
             .then(m => m.DevoirsComponent)
-      },
-      {
-        path: 'evaluations',
-        loadComponent: () =>
-          import('./features/prof/evaluations/evaluations.component')
-            .then(m => m.EvaluationsComponent)
       },
       {
         path: 'groupes',
@@ -60,10 +49,29 @@ export const routes: Routes = [
             .then(m => m.GroupesComponent)
       },
       {
+        path: 'hifd',
+        loadComponent: () =>
+          import('./features/prof/hifd/hifd.component')
+            .then(m => m.HifdComponent)
+      },
+      
+      {
         path: 'rapports',
         loadComponent: () =>
           import('./features/prof/rapports/rapports.component')
             .then(m => m.RapportsComponent)
+      },
+      {
+        path: 'paiements',
+        loadComponent: () =>
+          import('./features/prof/payement/payement.component')
+            .then(m => m.PaiementsComponent)
+      },
+      {
+        path: 'emploi',
+        loadComponent: () =>
+          import('./features/prof/emploi/emploi.component')
+            .then(m => m.EmploiComponent)
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
@@ -79,17 +87,12 @@ export const routes: Routes = [
           import('./features/etudiant/dashboard/dashboard.component')
             .then(m => m.DashboardComponent)
       },
+      
       {
-        path: 'mes-sourates',
+        path: 'mes-cours',
         loadComponent: () =>
-          import('./features/etudiant/mes-sourates/mes-sourates.component')
-            .then(m => m.MesSouratesComponent)
-      },
-      {
-        path: 'mes-presences',
-        loadComponent: () =>
-          import('./features/etudiant/mes-presences/mes-presences.component')
-            .then(m => m.MesPresencesComponent)
+          import('./features/etudiant/mes-cours/mes-cours.component')
+            .then(m => m.MesCoursComponent)
       },
       {
         path: 'mes-devoirs',
@@ -98,10 +101,10 @@ export const routes: Routes = [
             .then(m => m.MesDevoirsComponent)
       },
       {
-        path: 'mes-evaluations',
+        path: 'mes-notifications',
         loadComponent: () =>
-          import('./features/etudiant/mes-evaluations/mes-evaluations.component')
-            .then(m => m.MesEvaluationsComponent)
+          import('./features/etudiant/mes-notifications/mes-notifications.component')
+            .then(m => m.MesNotificationsComponent)
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

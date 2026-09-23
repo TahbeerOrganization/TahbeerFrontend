@@ -31,82 +31,132 @@
           <div class="calendar">
 
             <!-- HEADER -->
+
             <div class="calendar-header">
 
-              <div class="time-header">
-                الوقت
+              <div class="day-corner">
+                اليوم
               </div>
 
-              @for (jour of jours; track jour.id) {
+              @for (heure of heures; track heure) {
 
-                <div class="day-header">
-                  {{ jour.nom }}
+                <div
+                  class="hour-header"
+                  [style.width.px]="HOUR_WIDTH"
+                  [style.min-width.px]="HOUR_WIDTH"
+                >
+                  {{ heure }}
                 </div>
 
               }
 
             </div>
 
+
             <!-- BODY -->
-            @for (heure of heures; track heure) {
 
-              <div class="calendar-row">
+            <div class="calendar-body">
 
-                <div class="time-cell">
-                  {{ heure }}
-                </div>
+              @for (jour of jours; track jour.id) {
 
-                @for (jour of jours; track jour.id) {
+                <div
+                  class="day-row"
+                  [style.height.px]="HOUR_HEIGHT"
+                >
+
+                  <!-- JOUR -->
 
                   <div
-                    class="calendar-cell"
-                    (click)="
-                      !getPlanning(jour.id, heure)
-                      && ouvrirAjout(jour.id, heure)
-                    "
+                    class="day-name"
+                    [style.height.px]="HOUR_HEIGHT"
+                  >
+                    {{ jour.nom }}
+                  </div>
+
+
+                  <!-- HEURES -->
+
+                  <div
+                    class="day-hours"
+                    [style.width.px]="heures.length * HOUR_WIDTH"
+                    [style.min-width.px]="heures.length * HOUR_WIDTH"
+                    [style.height.px]="HOUR_HEIGHT"
                   >
 
-                    @if (getPlanning(jour.id, heure); as item) {
+                    @for (
+                      heure of heures;
+                      track heure
+                    ) {
 
-                      @if (getGroupe(item.groupe_id); as groupe) {
+                      <div
+                        class="hour-cell"
+                        [style.width.px]="HOUR_WIDTH"
+                        [style.min-width.px]="HOUR_WIDTH"
+                        [style.height.px]="HOUR_HEIGHT"
+                        (click)="
+                          !getPlanning(jour.id, heure)
+                          && ouvrirAjout(jour.id, heure)
+                        "
+                      >
+                      </div>
 
-                        <div
-                          class="planning-block"
-                          [style.background]="groupe.couleur"
-                          (click)="
-                            $event.stopPropagation();
-                            ouvrirModification(item)
-                          "
-                        >
+                    }
 
-                          <strong>
-                            {{ groupe.nom }}
-                          </strong>
 
-                          <span>
-                            {{ item.heure_debut.substring(0, 5) }}
-                            -
-                            {{ item.heure_fin.substring(0, 5) }}
-                          </span>
+                    <!-- EVENTS -->
 
-                        </div>
+                    @for (
+                      item of planning();
+                      track item.id
+                    ) {
+
+                      @if (item.jour === jour.id) {
+
+                        @if (
+                          getGroupe(item.groupe_id);
+                          as groupe
+                        ) {
+
+                          <div
+                            class="event-block"
+                            [style.right.px]="getLeft(item)"
+                            [style.width.px]="getLargeur(item)"
+                            [style.top.px]="0"
+                            [style.height.px]="HOUR_HEIGHT"
+                            [style.background-color]="
+                              groupe.couleur || '#1B6FA8'
+                            "
+                            (click)="
+                              $event.stopPropagation();
+                              ouvrirModification(item)
+                            "
+                          >
+
+                            <div class="event-nom">
+                              {{ groupe.nom }}
+                            </div>
+
+                            <div class="event-time">
+                              {{ item.heure_debut.substring(0, 5) }}
+                              -
+                              {{ item.heure_fin.substring(0, 5) }}
+                            </div>
+
+                          </div>
+
+                        }
 
                       }
-
-                    } @else {
-
-                      <!-- Cellule vide -->
-                      <div class="empty-cell"></div>
 
                     }
 
                   </div>
 
-                }
+                </div>
 
-              </div>
+              }
 
-            }
+            </div>
 
           </div>
 
@@ -121,9 +171,9 @@
 </div>
 
 
-<!-- ================================================= -->
+<!-- ============================= -->
 <!-- MODAL -->
-<!-- ================================================= -->
+<!-- ============================= -->
 
 @if (showModal()) {
 
@@ -141,9 +191,10 @@
 
         <h3>
           📅
-          {{ form().id
-            ? 'تعديل الحصة'
-            : 'إضافة حصة'
+          {{
+            form().id
+              ? 'تعديل الحصة'
+              : 'إضافة حصة'
           }}
         </h3>
 
@@ -181,7 +232,10 @@
               اختر المجموعة
             </option>
 
-            @for (groupe of groupes(); track groupe.id) {
+            @for (
+              groupe of groupes();
+              track groupe.id
+            ) {
 
               <option [value]="groupe.id">
                 {{ groupe.nom }}
@@ -211,7 +265,10 @@
             )"
           >
 
-            @for (jour of jours; track jour.id) {
+            @for (
+              jour of jours;
+              track jour.id
+            ) {
 
               <option [value]="jour.id">
                 {{ jour.nom }}
@@ -272,7 +329,10 @@
 
         @if (form().groupe_id) {
 
-          @if (getGroupe(form().groupe_id); as groupe) {
+          @if (
+            getGroupe(form().groupe_id);
+            as groupe
+          ) {
 
             <div
               class="selected-group"
