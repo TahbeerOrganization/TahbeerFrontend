@@ -548,64 +548,98 @@ export class EtudiantsComponent implements OnInit {
   // CRÉER ÉTUDIANT
   // =========================================================
 
-  private async create(): Promise<void> {
+private async create(): Promise<void> {
+
   const f = this.form();
 
-  const { data, error } =
-    await this.sb.client.functions.invoke(
-      'create-user',
-      {
-        body: {
-          email: f.email.trim(),
-          password: f.password,
-          nom: f.nom.trim(),
-          niveau: f.niveau || null
-        }
-      }
-    );
+  try {
 
-  console.log('CREATE DATA:', data);
-  console.log('CREATE ERROR:', error);
-
-  if (error) {
-    let message = error.message || 'Erreur Edge Function';
-
-    try {
-      const response = (error as any).context;
-
-      if (response) {
-        const text = await response.text();
-        console.error('EDGE FUNCTION RESPONSE:', text);
-
-        try {
-          const json = JSON.parse(text);
-          message = json.error || json.message || text;
-        } catch {
-          if (text) {
-            message = text;
+    const { data, error } =
+      await this.sb.client.functions.invoke(
+        'create-user',
+        {
+          body: {
+            email: f.email.trim(),
+            password: f.password,
+            nom: f.nom.trim(),
+            niveau: f.niveau || null
           }
         }
-      }
-    } catch (e) {
-      console.error('Impossible de lire response:', e);
+      );
+
+    console.log('CREATE DATA:', data);
+    console.log('CREATE ERROR:', error);
+
+    // =====================================================
+    // ERROR EDGE FUNCTION
+    // =====================================================
+
+    if (error) {
+
+      console.error(
+        'Erreur Edge Function:',
+        error
+      );
+
+      // Supabase FunctionsHttpError
+      // غالباً error.message فيها الرسالة المناسبة
+      throw new Error(
+        error.message ||
+        'Erreur lors de la création du compte'
+      );
     }
 
-    throw new Error(message);
+    // =====================================================
+    // ERROR RETOURNÉ PAR LA FUNCTION
+    // =====================================================
+
+    if (data?.error) {
+
+      throw new Error(
+        data.error
+      );
+    }
+
+    // =====================================================
+    // SUCCESS
+    // =====================================================
+
+    console.log(
+      '✅ Étudiant créé:',
+      data
+    );
+
+    this.successMsg.set(
+      '✅ تم إضافة الطالب بنجاح'
+    );
+
+    // Reload students
+    await this.loadData();
+
+    // Fermer modal
+    setTimeout(() => {
+
+      this.fermerModal();
+
+      this.successMsg.set('');
+
+    }, 1000);
+
+  } catch (err: any) {
+
+    console.error(
+      'Erreur création étudiant:',
+      err
+    );
+
+    throw new Error(
+      err?.message ||
+      'حدث خطأ أثناء إنشاء الطالب'
+    );
   }
-
-  if (data?.error) {
-    throw new Error(data.error);
-  }
-
-  this.successMsg.set('✅ تم إضافة الطالب بنجاح');
-
-  await this.loadData();
-
-  setTimeout(() => {
-    this.fermerModal();
-    this.successMsg.set('');
-  }, 1000);
 }
+
+
 
   // =========================================================
   // MODIFIER ÉTUDIANT

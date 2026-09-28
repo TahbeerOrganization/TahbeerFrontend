@@ -7,28 +7,38 @@ export class AuthService {
 
   currentUser = signal<any>(null);
 
-  constructor(private sb: SupabaseService, private router: Router) {
-    // Écoute les changements de session (refresh page, logout...)
+  constructor(
+    private sb: SupabaseService,
+    private router: Router
+  ) {
     this.sb.client.auth.onAuthStateChange(async (event, session) => {
+
       if (session?.user) {
         await this.loadProfile(session.user.id);
       } else {
         this.currentUser.set(null);
       }
+
     });
   }
 
   // ── Login ──────────────────────────────────────
   async login(email: string, password: string) {
-    const { data, error } = await this.sb.client.auth
-      .signInWithPassword({ email, password });
 
-    if (error) throw error;
+    const { data, error } =
+      await this.sb.client.auth.signInWithPassword({
+        email,
+        password
+      });
+
+    if (error) {
+      throw error;
+    }
 
     if (data.user) {
-      // Charger le profil
+
       await this.loadProfile(data.user.id);
-      // Rediriger selon le rôle
+
       this.redirectByRole();
     }
 
@@ -36,18 +46,39 @@ export class AuthService {
   }
 
   // ── Register ───────────────────────────────────
-  async register(email: string, password: string, profile: any) {
-    const { data, error } = await this.sb.client.auth
-      .signUp({ email, password });
+  async register(
+    email: string,
+    password: string,
+    profile: any
+  ) {
 
-    if (error) throw error;
+    const { data, error } =
+      await this.sb.client.auth.signUp({
+        email,
+        password
+      });
+
+    if (error) {
+      throw error;
+    }
 
     if (data.user) {
-      await this.sb.client.from('profiles').insert({
-        id: data.user.id,
-        ...profile
-      });
+
+      const { error: profileError } =
+        await this.sb.client
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: email,
+            ...profile
+          });
+
+      if (profileError) {
+        throw profileError;
+      }
+
       await this.loadProfile(data.user.id);
+
       this.redirectByRole();
     }
 
@@ -56,46 +87,99 @@ export class AuthService {
 
   // ── Logout ─────────────────────────────────────
   async logout() {
+
     await this.sb.client.auth.signOut();
+
     this.currentUser.set(null);
+
     this.router.navigate(['/login']);
   }
 
-  // ── Charger le profil depuis Supabase ──────────
+  // ── Charger le profil ──────────────────────────
   async loadProfile(userId: string) {
-    const { data, error } = await this.sb.client
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+
+    const { data, error } =
+      await this.sb.client
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
     if (error) {
-      console.error('❌ PROFILE ERROR:', error.message);
-      return;
+
+      console.error(
+        '❌ PROFILE ERROR:',
+        error.message
+      );
+
+      return null;
     }
 
-    console.log('✅ PROFILE LOADED:', data);
+    if (!data) {
+
+      console.warn(
+        '⚠️ Aucun profil trouvé pour:',
+        userId
+      );
+
+      this.currentUser.set(null);
+
+      return null;
+    }
+
+    console.log(
+      '✅ PROFILE LOADED:',
+      data
+    );
+
     this.currentUser.set(data);
+
+    return data;
   }
 
   // ── Redirection selon le rôle ──────────────────
   private redirectByRole() {
+
     const role = this.currentUser()?.role;
+
     console.log('ROLE:', role);
 
     if (role === 'prof') {
-      this.router.navigate(['/prof/dashboard']);
+
+      this.router.navigate([
+        '/prof/dashboard'
+      ]);
+
     } else if (role === 'etudiant') {
-      this.router.navigate(['/etudiant/dashboard']);
+
+      this.router.navigate([
+        '/etudiant/dashboard'
+      ]);
+
     } else {
-      // Rôle inconnu — rester sur login
-      console.warn('Rôle inconnu:', role);
+
+      console.warn(
+        '⚠️ Rôle inconnu:',
+        role
+      );
     }
   }
 
-  // ── Getters utiles ─────────────────────────────
-  get role() { return this.currentUser()?.role; }
-  isLoggedIn() { return !!this.currentUser(); }
-  isProf() { return this.currentUser()?.role === 'prof'; }
-  isEtudiant() { return this.currentUser()?.role === 'etudiant'; }
+  // ── Getters ────────────────────────────────────
+
+  get role() {
+    return this.currentUser()?.role;
+  }
+
+  isLoggedIn() {
+    return !!this.currentUser();
+  }
+
+  isProf() {
+    return this.currentUser()?.role === 'prof';
+  }
+
+  isEtudiant() {
+    return this.currentUser()?.role === 'etudiant';
+  }
 }

@@ -1,198 +1,488 @@
 <div class="layout" dir="rtl">
 
   <!-- ══ SIDEBAR ══════════════════════════════════ -->
-  <app-sidebar activePage="etudiants"></app-sidebar>
+
+<app-sidebar activePage="etudiants"></app-sidebar>
 
   <!-- ══ MAIN ══════════════════════════════════════ -->
+
   <main class="main">
 
-    <!-- Topbar -->
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">✅ الحضور والغياب</div>
-        <div class="topbar-sub">
-          {{ selectedDate() | date:'EEEE dd MMMM yyyy':'':'ar' }}
-          @if (isToday()) {
-            <span class="today-badge">اليوم</span>
-          }
-        </div>
-      </div>
-      <div class="header-actions">
-        <button 
-          class="btn-primary"
-          (click)="marquerTousPresents()"
-          [disabled]="saving()">
-          @if (saving()) {
-            <span class="spinner-sm"></span> جاري الحفظ...
-          } @else {
-            ✅ تحضير الجميع
-          }
-        </button>
-      </div>
+<!-- TOPBAR -->
+<div class="topbar">
+
+  <div>
+    <div class="topbar-title">
+      ✅ الحضور والغياب
     </div>
 
-    <!-- Content -->
-    <div class="content">
+    <div class="topbar-sub">
 
-      <!-- Alerts -->
-      @if (successMsg()) {
-        <div class="alert alert-success">{{ successMsg() }}</div>
+      {{ selectedDate() | date:'EEEE dd MMMM yyyy':'':'ar' }}
+
+      @if (isToday()) {
+        <span class="today-badge">
+          اليوم
+        </span>
       }
-      @if (errorMsg()) {
-        <div class="alert alert-error">{{ errorMsg() }}</div>
+
+    </div>
+  </div>
+
+  <div class="header-actions">
+
+    <button
+      class="btn-primary"
+      (click)="marquerTousPresents()"
+      [disabled]="saving()"
+    >
+
+      @if (saving()) {
+
+        <span class="spinner-sm"></span>
+        جاري الحفظ...
+
+      } @else {
+
+        ✅ تحضير الجميع
+
       }
 
-      <!-- ── STATS ───────────────────────────────── -->
-      <div class="stats-row">
-        <div class="stat-card stat-green">
-          <div class="stat-val">{{ totalPresents() }}</div>
-          <div class="stat-label">حاضر</div>
-        </div>
-        <div class="stat-card stat-red">
-          <div class="stat-val">{{ totalAbsents() }}</div>
-          <div class="stat-label">غائب</div>
-        </div>
-        <div class="stat-card stat-amber">
-          <div class="stat-val">{{ totalRetards() }}</div>
-          <div class="stat-label">متأخر</div>
-        </div>
-        <div class="stat-card stat-blue">
-          <div class="stat-val">{{ getTauxPresence() }}%</div>
-          <div class="stat-label">نسبة الحضور</div>
-        </div>
-        <div class="stat-card stat-gray">
-          <div class="stat-val">
-            {{ etudiants().length - totalPresents() - totalAbsents() - totalRetards() }}
-          </div>
-          <div class="stat-label">لم يُسجَّل</div>
-        </div>
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ALERT SUCCESS -->
+  @if (successMsg()) {
+
+    <div class="alert alert-success">
+      {{ successMsg() }}
+    </div>
+
+  }
+
+
+  <!-- ALERT ERROR -->
+  @if (errorMsg()) {
+
+    <div class="alert alert-error">
+      ⚠️ {{ errorMsg() }}
+    </div>
+
+  }
+
+
+  <!-- ══ STATS ═════════════════════════════════ -->
+
+  <div class="stats-row">
+
+    <div class="stat-card stat-green">
+
+      <div class="stat-val">
+        {{ totalPresents() }}
       </div>
 
-      <!-- ── FILTRES ────────────────────────────── -->
-      <div class="filters-bar">
-        <input
-          type="date"
-          class="date-input"
-          [value]="selectedDate()"
-          (change)="onDateChange($any($event.target).value)"
-        />
-        <select
-          class="filter-select"
-          [value]="selectedGroupe()"
-          (change)="onGroupeChange($any($event.target).value)"
-        >
-          <option value="">كل المجموعات</option>
-          @for (g of groupes(); track g.id) {
-            <option [value]="g.id">{{ g.nom }}</option>
-          }
-        </select>
-        <button class="btn-ghost" (click)="loadEtudiants()">
-          🔄 تحديث
-        </button>
+      <div class="stat-label">
+        حاضر
       </div>
 
-      <!-- ── LEGENDE ────────────────────────────── -->
-      <div class="legend">
-        <span class="leg-item"><span class="leg-dot dot-green"></span>حاضر</span>
-        <span class="leg-item"><span class="leg-dot dot-red"></span>غائب</span>
-        <span class="leg-item"><span class="leg-dot dot-amber"></span>متأخر</span>
-        <span class="leg-item"><span class="leg-dot dot-blue"></span>معذور</span>
+    </div>
+
+
+    <div class="stat-card stat-red">
+
+      <div class="stat-val">
+        {{ totalAbsents() }}
       </div>
 
-      <!-- ── TABLE ─────────────────────────────── -->
-      <div class="card">
-        @if (loading()) {
-          <div class="loading-wrap">
-            <div class="spinner"></div>
-            <p>جاري التحميل...</p>
-          </div>
-        } @else if (etudiants().length === 0) {
-          <div class="empty-state">
-            <div class="empty-icon">👥</div>
-            <p>لا يوجد طلاب في هذه المجموعة</p>
-          </div>
-        } @else {
-          <table class="table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>الطالب</th>
-                <th>المجموعة</th>
-                <th>الحالة</th>
-                <th>تسجيل الحضور</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (e of etudiants(); track e.id; let i = $index) {
-                <tr [class.row-present]="e.statut === 'حاضر'"
-                    [class.row-absent]="e.statut === 'غائب'"
-                    [class.row-retard]="e.statut === 'متأخر'">
-                  <td class="td-num">{{ i + 1 }}</td>
-                  <td>
-                    <div class="stu-cell">
-                      <div class="stu-avatar" [class]="'avatar-' + (e.statut || 'none')">
-                        {{ e.nom?.charAt(0) }}
-                      </div>
-                      <div class="stu-name">{{ e.nom }}</div>
+      <div class="stat-label">
+        غائب
+      </div>
+
+    </div>
+
+
+    <div class="stat-card stat-amber">
+
+      <div class="stat-val">
+        {{ totalRetards() }}
+      </div>
+
+      <div class="stat-label">
+        متأخر
+      </div>
+
+    </div>
+
+
+    <div class="stat-card stat-blue">
+
+      <div class="stat-val">
+        {{ getTauxPresence() }}%
+      </div>
+
+      <div class="stat-label">
+        نسبة الحضور
+      </div>
+
+    </div>
+
+
+    <div class="stat-card stat-gray">
+
+      <div class="stat-val">
+
+        {{
+          etudiants().length
+          - totalPresents()
+          - totalAbsents()
+          - totalRetards()
+        }}
+
+      </div>
+
+      <div class="stat-label">
+        لم يُسجَّل
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- ══ FILTRES ══════════════════════════════ -->
+
+  <div class="filters-bar">
+
+    <!-- DATE -->
+
+    <input
+      type="date"
+      class="date-input"
+      [value]="selectedDate()"
+      (change)="onDateChange($any($event.target).value)"
+    />
+
+
+    <!-- GROUPE -->
+
+    <select
+      class="filter-select"
+      [value]="selectedGroupe()"
+      (change)="onGroupeChange($any($event.target).value)"
+    >
+
+      <option value="">
+        كل المجموعات
+      </option>
+
+      @for (g of groupes(); track g.id) {
+
+        <option [value]="g.id">
+          {{ g.nom }}
+        </option>
+
+      }
+
+    </select>
+
+
+    <!-- REFRESH -->
+
+    <button
+      class="btn-ghost"
+      (click)="loadEtudiants()"
+    >
+      🔄 تحديث
+    </button>
+
+  </div>
+
+
+  <!-- ══ LEGENDE ══════════════════════════════ -->
+
+  <div class="legend">
+
+    <span class="leg-item">
+      <span class="leg-dot dot-green"></span>
+      حاضر
+    </span>
+
+    <span class="leg-item">
+      <span class="leg-dot dot-red"></span>
+      غائب
+    </span>
+
+    <span class="leg-item">
+      <span class="leg-dot dot-amber"></span>
+      متأخر
+    </span>
+
+    <span class="leg-item">
+      <span class="leg-dot dot-blue"></span>
+      معذور
+    </span>
+
+  </div>
+
+
+  <!-- ══ TABLE ═══════════════════════════════ -->
+
+  <div class="card">
+
+    <!-- LOADING -->
+
+    @if (loading()) {
+
+      <div class="loading-wrap">
+
+        <div class="spinner"></div>
+
+        <p>
+          جاري التحميل...
+        </p>
+
+      </div>
+
+    }
+
+
+    <!-- EMPTY -->
+
+    @else if (etudiants().length === 0) {
+
+      <div class="empty-state">
+
+        <div class="empty-icon">
+          👥
+        </div>
+
+        <p>
+          لا يوجد طلاب في هذه المجموعة
+        </p>
+
+      </div>
+
+    }
+
+
+    <!-- TABLE -->
+
+    @else {
+
+      <div class="table-responsive">
+
+        <table class="table">
+
+          <thead>
+
+            <tr>
+
+              <th></th>
+
+              <th>
+                الطالب
+              </th>
+
+              <th>
+                المجموعة
+              </th>
+
+              <th>
+                الحالة
+              </th>
+
+              <th>
+                تسجيل الحضور
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            @for (
+              e of etudiants();
+              track e.id;
+              let i = $index
+            ) {
+
+              <tr
+                [class.row-present]="e.statut === 'حاضر'"
+                [class.row-absent]="e.statut === 'غائب'"
+                [class.row-retard]="e.statut === 'متأخر'"
+              >
+
+                <!-- NUMBER -->
+
+                <td class="td-num">
+                  {{ i + 1 }}
+                </td>
+
+
+                <!-- STUDENT -->
+
+                <td>
+
+                  <div class="stu-cell">
+
+                    <div
+                      class="stu-avatar"
+                      [class]="'avatar-' + (e.statut || 'none')"
+                    >
+
+                      {{ e.nom?.charAt(0) }}
+
                     </div>
-                  </td>
-                  <td>
+
+                    <div class="stu-name">
+
+                      {{ e.nom }}
+
+                    </div>
+
+                  </div>
+
+                </td>
+
+
+                <!-- GROUPE -->
+
+                <td>
+
+                  @if (e.groupes) {
+
                     <span class="badge badge-blue">
-                      {{ e.groupes?.nom || '—' }}
+
+                      {{ e.groupes.nom }}
+
                     </span>
-                  </td>
-                  <td>
-                    @if (e.statut) {
-                      <span class="statut-badge"
-                        [class.s-green]="e.statut === 'حاضر'"
-                        [class.s-red]="e.statut === 'غائب'"
-                        [class.s-amber]="e.statut === 'متأخر'"
-                        [class.s-blue]="e.statut === 'معذور'">
-                        {{ e.statut }}
-                      </span>
-                    } @else {
-                      <span class="statut-badge s-gray">لم يُسجَّل</span>
-                    }
-                  </td>
-                  <td>
-                    <div class="presence-btns">
-                      <button
-                        class="pres-btn btn-p"
-                        [class.active]="e.statut === 'حاضر'"
-                        (click)="setStatut(e, 'حاضر')"
-                        title="حاضر">
-                        ✅
-                      </button>
-                      <button
-                        class="pres-btn btn-a"
-                        [class.active]="e.statut === 'غائب'"
-                        (click)="setStatut(e, 'غائب')"
-                        title="غائب">
-                        ❌
-                      </button>
-                      <button
-                        class="pres-btn btn-r"
-                        [class.active]="e.statut === 'متأخر'"
-                        (click)="setStatut(e, 'متأخر')"
-                        title="متأخر">
-                        ⏰
-                      </button>
-                      <button
-                        class="pres-btn btn-e"
-                        [class.active]="e.statut === 'معذور'"
-                        (click)="setStatut(e, 'معذور')"
-                        title="معذور">
-                        📋
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
+
+                  } @else {
+
+                    <span class="badge badge-gray">
+
+                      بدون مجموعة
+
+                    </span>
+
+                  }
+
+                </td>
+
+
+                <!-- STATUT -->
+
+                <td>
+
+                  @if (e.statut) {
+
+                    <span
+                      class="statut-badge"
+                      [class.s-green]="e.statut === 'حاضر'"
+                      [class.s-red]="e.statut === 'غائب'"
+                      [class.s-amber]="e.statut === 'متأخر'"
+                      [class.s-blue]="e.statut === 'معذور'"
+                    >
+
+                      {{ e.statut }}
+
+                    </span>
+
+                  } @else {
+
+                    <span class="statut-badge s-gray">
+
+                      لم يُسجَّل
+
+                    </span>
+
+                  }
+
+                </td>
+
+
+                <!-- PRESENCE BUTTONS -->
+
+                <td>
+
+                  <div class="presence-btns">
+
+                    <!-- PRESENT -->
+
+                    <button
+                      class="pres-btn btn-p"
+                      [class.active]="e.statut === 'حاضر'"
+                      (click)="setStatut(e, 'حاضر')"
+                      title="حاضر"
+                    >
+                      ✅
+                    </button>
+
+
+                    <!-- ABSENT -->
+
+                    <button
+                      class="pres-btn btn-a"
+                      [class.active]="e.statut === 'غائب'"
+                      (click)="setStatut(e, 'غائب')"
+                      title="غائب"
+                    >
+                      ❌
+                    </button>
+
+
+                    <!-- RETARD -->
+
+                    <button
+                      class="pres-btn btn-r"
+                      [class.active]="e.statut === 'متأخر'"
+                      (click)="setStatut(e, 'متأخر')"
+                      title="متأخر"
+                    >
+                      ⏰
+                    </button>
+
+
+                    <!-- EXCUSE -->
+
+                    <button
+                      class="pres-btn btn-e"
+                      [class.active]="e.statut === 'معذور'"
+                      (click)="setStatut(e, 'معذور')"
+                      title="معذور"
+                    >
+                      📋
+                    </button>
+
+                  </div>
+
+                </td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
       </div>
 
-    </div>
+    }
+
+  </div>
+
+</div>
+
   </main>
+
 </div>
