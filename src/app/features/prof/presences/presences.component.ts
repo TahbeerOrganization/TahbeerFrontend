@@ -1,322 +1,846 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 
 @Component({
-  selector: 'app-presences',
-  standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
-  templateUrl: './presences.component.html',
-  styleUrl: './presences.component.css'
+selector: 'app-presences',
+standalone: true,
+
+imports: [
+CommonModule,
+FormsModule,
+SidebarComponent
+],
+
+templateUrl: './presences.component.html',
+styleUrl: './presences.component.css'
 })
 export class PresencesComponent implements OnInit {
 
-  etudiants = signal<any[]>([]);
-  groupes = signal<any[]>([]);
-  presences = signal<any[]>([]);
+// =========================================================
+// DONNÉES
+// =========================================================
 
-  loading = signal(true);
-  saving = signal(false);
-  successMsg = signal('');
-  errorMsg = signal('');
+etudiants = signal<any[]>([]);
 
-  selectedDate = signal(new Date().toISOString().split('T')[0]);
-  selectedGroupe = signal('');
+groupes = signal<any[]>([]);
 
-  totalPresents = signal(0);
-  totalAbsents = signal(0);
-  totalRetards = signal(0);
+presences = signal<any[]>([]);
 
-  constructor(
-    private sb: SupabaseService,
-    public auth: AuthService
-  ) {}
+// =========================================================
+// UI
+// =========================================================
 
-  ngOnInit(): void {
-    this.loadData();
-  }
+loading = signal(true);
 
-  async loadData(): Promise<void> {
-    this.loading.set(true);
-    this.errorMsg.set('');
+saving = signal(false);
 
-    try {
-      await this.loadGroupes();
-      await this.loadEtudiants();
-    } catch (error: any) {
-      console.error('Erreur chargement présences:', error);
-      this.errorMsg.set(error?.message || 'خطأ في تحميل البيانات');
-    } finally {
-      this.loading.set(false);
-    }
-  }
+successMsg = signal('');
 
-  async loadGroupes(): Promise<void> {
-    const { data, error } = await this.sb.client
-      .from('groupes')
-      .select('id, nom, type')
-      .order('nom');
+errorMsg = signal('');
 
-    if (error) {
-      console.error('Erreur groupes:', error);
-      throw error;
-    }
+// =========================================================
+// FILTRES
+// =========================================================
 
-    this.groupes.set(data ?? []);
-  }
+selectedDate = signal(
+new Date().toISOString().split('T')[0]
+);
 
-async loadEtudiants(): Promise<void> {
-  this.loading.set(true);
-  this.errorMsg.set('');
+selectedGroupe = signal('');
 
-  try {
-    // 1. Charger les étudiants
-    let query = this.sb.client
-      .from('profiles')
-      .select('id, nom, role, groupe_id, niveau')
-      .eq('role', 'etudiant')
-      .order('nom');
+// =========================================================
+// STATISTIQUES
+// =========================================================
 
-    // 2. Filtrer par groupe si nécessaire
-    if (this.selectedGroupe()) {
-      query = query.eq('groupe_id', this.selectedGroupe());
-    }
+totalPresents = signal(0);
 
-    const { data: etudiants, error: etudiantsError } = await query;
+totalAbsents = signal(0);
 
-    if (etudiantsError) {
-      throw etudiantsError;
-    }
+totalRetards = signal(0);
 
-    // 3. Charger les présences pour la date sélectionnée
-    const { data: presences, error: presencesError } = await this.sb.client
-      .from('presences')
-      .select('id, etudiant_id, statut, note')
-      .eq('date', this.selectedDate());
+// =========================================================
+// CONSTRUCTOR
+// =========================================================
 
-    if (presencesError) {
-      throw presencesError;
-    }
+constructor(
+private sb: SupabaseService,
+public auth: AuthService
+) {}
 
-    // 4. Fusionner étudiants + présence
-    const merged = (etudiants ?? []).map((etudiant: any) => {
-      const presence = (presences ?? []).find(
-        (p: any) => p.etudiant_id === etudiant.id
-      );
+// =========================================================
+// INIT
+// =========================================================
 
-      return {
-        ...etudiant,
-        statut: presence?.statut ?? null,
-        presence_id: presence?.id ?? null,
-        note: presence?.note ?? ''
-      };
-    });
+ngOnInit(): void {
+this.loadData();
+}
+// =========================================================
+// CHARGER TOUT
+// =========================================================
 
-    // 5. Mettre à jour l'écran
-    this.etudiants.set(merged);
-    this.calculerStats(merged);
+async loadData(): Promise<void> {
+this.loading.set(true);
 
-  } catch (error: any) {
-    console.error('Erreur chargement étudiants:', error);
+this.errorMsg.set('');
 
-    this.errorMsg.set(
-      error?.message || 'خطأ في تحميل الطلاب'
-    );
+try {
 
-    this.etudiants.set([]);
-    this.calculerStats([]);
+  // Charger les groupes
+  await this.loadGroupes();
 
-  } finally {
-    this.loading.set(false);
-  }
+  // Charger les étudiants + présences
+  await this.loadEtudiants();
+
+} catch (error: any) {
+
+  console.error(
+    'Erreur chargement présences:',
+    error
+  );
+
+  this.errorMsg.set(
+    error?.message ||
+    'خطأ في تحميل البيانات'
+  );
+
+} finally {
+
+  this.loading.set(false);
+
+}
+}
+
+// =========================================================
+// GROUPES
+// =========================================================
+
+async loadGroupes(): Promise<void> {
+const {
+  data,
+  error
+} = await this.sb.client
+
+  .from('groupes')
+
+  .select(`
+    id,
+    nom
+  `)
+
+  .order('nom');
+
+
+if (error) {
+
+  console.error(
+    'Erreur groupes:',
+    error
+  );
+
+  throw error;
+
 }
 
 
-  calculerStats(etudiants: any[]): void {
-    this.totalPresents.set(
-      etudiants.filter(e => e.statut === 'حاضر').length
-    );
+this.groupes.set(
+  data ?? []
+);
+}
 
-    this.totalAbsents.set(
-      etudiants.filter(e => e.statut === 'غائب').length
-    );
+// =========================================================
+// ÉTUDIANTS + GROUPES + PRÉSENCES
+// =========================================================
 
-    this.totalRetards.set(
-      etudiants.filter(e => e.statut === 'متأخر').length
-    );
+async loadEtudiants(): Promise<void> {
+this.loading.set(true);
+this.errorMsg.set('');
+try {
+
+  // =====================================================
+  // 1. PROFILS ÉTUDIANTS
+  //
+  // IMPORTANT:
+  // On ne cherche PAS groupe_id dans profiles.
+  // =====================================================
+
+  const {
+    data: profiles,
+    error: profilesError
+  } = await this.sb.client
+
+    .from('profiles')
+
+    .select(`
+      id,
+      nom,
+      role,
+      niveau,
+      created_at
+    `)
+
+    .eq(
+      'role',
+      'etudiant'
+    )
+
+    .order('nom');
+
+
+  if (profilesError) {
+
+    throw profilesError;
+
   }
 
-  async setStatut(
-    etudiant: any,
-    statut: string
-  ): Promise<void> {
 
-    const oldEtudiants = this.etudiants();
+  // =====================================================
+  // 2. GROUPES
+  // =====================================================
 
-    // Mise à jour immédiate de l'interface
-    const updated = oldEtudiants.map(e =>
-      e.id === etudiant.id
-        ? { ...e, statut }
-        : e
+  const {
+    data: groupes,
+    error: groupesError
+  } = await this.sb.client
+
+    .from('groupes')
+
+    .select(`
+      id,
+      nom
+    `)
+
+    .order('nom');
+
+
+  if (groupesError) {
+
+    throw groupesError;
+
+  }
+
+
+  // Synchroniser le signal groupes
+
+  this.groupes.set(
+    groupes ?? []
+  );
+
+
+  // =====================================================
+  // 3. RELATION ÉTUDIANT <-> GROUPE
+  // =====================================================
+
+  const {
+    data: relations,
+    error: relationsError
+  } = await this.sb.client
+
+    .from('groupe_etudiants')
+
+    .select(`
+      etudiant_id,
+      groupe_id
+    `);
+
+
+  if (relationsError) {
+
+    throw relationsError;
+
+  }
+
+
+  // =====================================================
+  // 4. PRÉSENCES DE LA DATE
+  // =====================================================
+
+  const {
+    data: presences,
+    error: presencesError
+  } = await this.sb.client
+
+    .from('presences')
+
+    .select(`
+      id,
+      etudiant_id,
+      statut,
+      note
+    `)
+
+    .eq(
+      'date',
+      this.selectedDate()
     );
 
-    this.etudiants.set(updated);
-    this.calculerStats(updated);
 
-    try {
-      const { data: existing, error: findError } =
-        await this.sb.client
-          .from('presences')
-          .select('id')
-          .eq('etudiant_id', etudiant.id)
-          .eq('date', this.selectedDate())
-          .maybeSingle();
+  if (presencesError) {
 
-      if (findError) {
-        throw findError;
-      }
+    throw presencesError;
 
-      if (existing) {
+  }
 
-        const { error } = await this.sb.client
-          .from('presences')
-          .update({
-            statut
-          })
-          .eq('id', existing.id);
 
-        if (error) {
-          throw error;
-        }
+  // =====================================================
+  // 5. CONSTRUIRE LES DONNÉES
+  // =====================================================
 
-      } else {
+  let result = (
+    profiles ?? []
+  ).map(
+    (etudiant: any) => {
 
-        const { error } = await this.sb.client
-          .from('presences')
-          .insert({
-            etudiant_id: etudiant.id,
-            date: this.selectedDate(),
-            statut
-          });
+      // -----------------------------------------------
+      // Relation groupe
+      // -----------------------------------------------
 
-        if (error) {
-          throw error;
-        }
-      }
-
-    } catch (error: any) {
-
-      console.error('Erreur statut:', error);
-
-      // Restaurer l'ancien état
-      this.etudiants.set(oldEtudiants);
-      this.calculerStats(oldEtudiants);
-
-      this.errorMsg.set(
-        error?.message || 'خطأ في تسجيل الحضور'
+      const relation = (
+        relations ?? []
+      ).find(
+        (r: any) =>
+          String(r.etudiant_id) ===
+          String(etudiant.id)
       );
 
-      setTimeout(() => {
-        this.errorMsg.set('');
-      }, 3000);
+
+      // -----------------------------------------------
+      // Groupe
+      // -----------------------------------------------
+
+      const groupe = relation
+
+        ? (
+            groupes ?? []
+          ).find(
+            (g: any) =>
+              String(g.id) ===
+              String(relation.groupe_id)
+          )
+
+        : null;
+
+
+      // -----------------------------------------------
+      // Présence
+      // -----------------------------------------------
+
+      const presence = (
+        presences ?? []
+      ).find(
+        (p: any) =>
+          String(p.etudiant_id) ===
+          String(etudiant.id)
+      );
+
+
+      // -----------------------------------------------
+      // Retour
+      // -----------------------------------------------
+
+      return {
+
+        id: etudiant.id,
+
+        nom: etudiant.nom || '',
+
+        role: etudiant.role,
+
+        niveau: etudiant.niveau || '',
+
+        created_at: etudiant.created_at,
+
+        // Groupe actuel
+        groupes: groupe
+          ? {
+              id: groupe.id,
+              nom: groupe.nom
+            }
+          : null,
+
+        // Présence
+        statut:
+          presence?.statut ?? null,
+
+        presence_id:
+          presence?.id ?? null,
+
+        note:
+          presence?.note ?? ''
+
+      };
+
     }
+  );
+
+
+  // =====================================================
+  // 6. FILTRE GROUPE
+  // =====================================================
+
+  const groupeId =
+    this.selectedGroupe();
+
+
+  if (groupeId) {
+
+    result = result.filter(
+      (e: any) =>
+
+        e.groupes !== null &&
+
+        String(e.groupes.id) ===
+        String(groupeId)
+    );
+
   }
 
-  async marquerTousPresents(): Promise<void> {
 
-    const etudiants = this.etudiants();
+  // =====================================================
+  // 7. AFFICHER
+  // =====================================================
 
-    if (etudiants.length === 0) {
-      this.errorMsg.set('لا يوجد طلاب لتسجيل الحضور');
-      return;
+  this.etudiants.set(
+    result
+  );
+
+
+  // Calcul statistiques
+
+  this.calculerStats(
+    result
+  );
+
+
+  console.log(
+    'ÉTUDIANTS PRÉSENCE:',
+    result
+  );
+
+
+} catch (error: any) {
+
+  console.error(
+    'Erreur chargement étudiants:',
+    error
+  );
+
+
+  this.errorMsg.set(
+    error?.message ||
+    'خطأ في تحميل الطلاب'
+  );
+
+
+  this.etudiants.set([]);
+
+  this.calculerStats([]);
+
+} finally {
+
+  this.loading.set(false);
+
+}
+}
+
+// =========================================================
+// STATISTIQUES
+// =========================================================
+
+calculerStats(
+etudiants: any[]
+): void {
+this.totalPresents.set(
+
+  etudiants.filter(
+    e =>
+      e.statut === 'حاضر'
+  ).length
+
+);
+
+
+this.totalAbsents.set(
+
+  etudiants.filter(
+    e =>
+      e.statut === 'غائب'
+  ).length
+
+);
+
+
+this.totalRetards.set(
+
+  etudiants.filter(
+    e =>
+      e.statut === 'متأخر'
+  ).length
+
+);
+}
+
+// =========================================================
+// CHANGER STATUT
+// =========================================================
+
+async setStatut(
+etudiant: any,
+statut: string
+): Promise<void> {
+// Ancien état
+const oldEtudiants =
+  this.etudiants();
+
+
+// =====================================================
+// UPDATE OPTIMISTE
+// =====================================================
+
+const updated =
+  oldEtudiants.map(
+    e =>
+
+      e.id === etudiant.id
+
+        ? {
+            ...e,
+            statut
+          }
+
+        : e
+  );
+
+
+this.etudiants.set(
+  updated
+);
+
+
+this.calculerStats(
+  updated
+);
+
+
+try {
+
+  // ===================================================
+  // CHERCHER PRÉSENCE EXISTANTE
+  // ===================================================
+
+  const {
+    data: existing,
+    error: findError
+  } = await this.sb.client
+
+    .from('presences')
+
+    .select('id')
+
+    .eq(
+      'etudiant_id',
+      etudiant.id
+    )
+
+    .eq(
+      'date',
+      this.selectedDate()
+    )
+
+    .maybeSingle();
+
+
+  if (findError) {
+
+    throw findError;
+
+  }
+
+
+  // ===================================================
+  // UPDATE
+  // ===================================================
+
+  if (existing) {
+
+    const {
+      error
+    } = await this.sb.client
+
+      .from('presences')
+
+      .update({
+        statut
+      })
+
+      .eq(
+        'id',
+        existing.id
+      );
+
+
+    if (error) {
+
+      throw error;
+
     }
 
-    this.saving.set(true);
+  }
+
+
+  // ===================================================
+  // INSERT
+  // ===================================================
+
+  else {
+
+    const {
+      error
+    } = await this.sb.client
+
+      .from('presences')
+
+      .insert({
+
+        etudiant_id:
+          etudiant.id,
+
+        date:
+          this.selectedDate(),
+
+        statut
+
+      });
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+  }
+
+
+} catch (error: any) {
+
+  console.error(
+    'Erreur statut:',
+    error
+  );
+
+
+  // Restaurer état
+  this.etudiants.set(
+    oldEtudiants
+  );
+
+
+  this.calculerStats(
+    oldEtudiants
+  );
+
+
+  this.errorMsg.set(
+    error?.message ||
+    'خطأ في تسجيل الحضور'
+  );
+
+
+  setTimeout(() => {
+
     this.errorMsg.set('');
 
-    try {
+  }, 3000);
 
-      const rows = etudiants.map(e => ({
-        etudiant_id: e.id,
-        date: this.selectedDate(),
-        statut: 'حاضر'
-      }));
+}
+}
 
-      const { error } = await this.sb.client
-        .from('presences')
-        .upsert(rows, {
-          onConflict: 'etudiant_id,date'
-        });
+// =========================================================
+// MARQUER TOUS PRÉSENTS
+// =========================================================
 
-      if (error) {
-        throw error;
+async marquerTousPresents(): Promise<void> {
+const etudiants =
+  this.etudiants();
+
+
+if (
+  etudiants.length === 0
+) {
+
+  this.errorMsg.set(
+    'لا يوجد طلاب لتسجيل الحضور'
+  );
+
+  return;
+
+}
+
+
+this.saving.set(true);
+
+this.errorMsg.set('');
+
+
+try {
+
+  // ===================================================
+  // Préparer les lignes
+  // ===================================================
+
+  const rows =
+    etudiants.map(
+      e => ({
+
+        etudiant_id:
+          e.id,
+
+        date:
+          this.selectedDate(),
+
+        statut:
+          'حاضر'
+
+      })
+    );
+
+
+  // ===================================================
+  // UPSERT
+  // ===================================================
+
+  const {
+    error
+  } = await this.sb.client
+
+    .from('presences')
+
+    .upsert(
+      rows,
+      {
+        onConflict:
+          'etudiant_id,date'
       }
-
-      await this.loadEtudiants();
-
-      this.successMsg.set(
-        '✅ تم تسجيل جميع الطلاب حاضرين!'
-      );
-
-      setTimeout(() => {
-        this.successMsg.set('');
-      }, 3000);
-
-    } catch (error: any) {
-
-      console.error('Erreur présence:', error);
-
-      this.errorMsg.set(
-        error?.message || 'خطأ في تسجيل الحضور'
-      );
-
-    } finally {
-      this.saving.set(false);
-    }
-  }
-
-  onDateChange(date: string): void {
-    this.selectedDate.set(date);
-    this.loadEtudiants();
-  }
-
-  onGroupeChange(groupeId: string): void {
-    this.selectedGroupe.set(groupeId);
-    this.loadEtudiants();
-  }
-
-  getStatutClass(statut: string): string {
-
-    const classes: Record<string, string> = {
-      'حاضر': 'btn-present active',
-      'غائب': 'btn-absent active',
-      'متأخر': 'btn-retard active',
-      'معذور': 'btn-excuse active'
-    };
-
-    return classes[statut] || '';
-  }
-
-  getTauxPresence(): number {
-
-    const total = this.etudiants().length;
-
-    if (total === 0) {
-      return 0;
-    }
-
-    return Math.round(
-      (this.totalPresents() / total) * 100
     );
+
+
+  if (error) {
+
+    throw error;
+
   }
 
-  isToday(): boolean {
-    return (
-      this.selectedDate() ===
-      new Date().toISOString().split('T')[0]
-    );
-  }
+
+  // ===================================================
+  // RECHARGER
+  // ===================================================
+
+  await this.loadEtudiants();
+
+
+  // ===================================================
+  // MESSAGE
+  // ===================================================
+
+  this.successMsg.set(
+    '✅ تم تسجيل جميع الطلاب حاضرين!'
+  );
+
+
+  setTimeout(() => {
+
+    this.successMsg.set('');
+
+  }, 3000);
+
+
+} catch (error: any) {
+
+  console.error(
+    'Erreur présence:',
+    error
+  );
+
+
+  this.errorMsg.set(
+    error?.message ||
+    'خطأ في تسجيل الحضور'
+  );
+
+
+} finally {
+
+  this.saving.set(false);
+
+}
+}
+
+// =========================================================
+// CHANGEMENT DATE
+// =========================================================
+
+onDateChange(
+date: string
+): void {
+this.selectedDate.set(
+  date
+);
+this.loadEtudiants();
+}
+
+// =========================================================
+// CHANGEMENT GROUPE
+// =========================================================
+
+onGroupeChange(
+groupeId: string
+): void {
+this.selectedGroupe.set(
+  groupeId
+);
+this.loadEtudiants();
+}
+// =========================================================
+// TAUX PRESENCE
+// =========================================================
+
+getTauxPresence(): number {
+const total =
+  this.etudiants().length;
+if (total === 0) {
+  return 0;
+}
+return Math.round(
+
+  (
+    this.totalPresents() /
+    total
+  ) * 100
+
+);
+}
+
+// =========================================================
+// AUJOURD'HUI
+// =========================================================
+
+isToday(): boolean {
+
+return (
+
+  this.selectedDate() ===
+
+  new Date()
+    .toISOString()
+    .split('T')[0]
+
+);
+
+}
+
 }

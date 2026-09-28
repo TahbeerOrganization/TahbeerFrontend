@@ -10,7 +10,6 @@
       <button class="btn-primary" (click)="ouvrirAjout()">إضافة طالب</button>
     </div>
 
-```
 <div class="content">
   @if (successMsg()) {
     <div class="alert alert-success">{{ successMsg() }}</div>
@@ -70,7 +69,7 @@
         <table class="table">
           <thead>
             <tr>
-              <th>#</th>
+              <th></th>
               <th>الطالب</th>
               <th>البريد الإلكتروني</th>
               <th>المجموعة</th>
@@ -88,9 +87,6 @@
 
                 <td>
                   <div class="stu-cell">
-                    <div class="stu-avatar">
-                      {{ e.nom?.charAt(0) }}
-                    </div>
                     <div class="stu-name">
                       {{ e.nom }}
                     </div>
@@ -178,7 +174,6 @@
     }
   </div>
 </div>
-```
 
   </main>
 </div>
@@ -192,7 +187,6 @@
           {{ modeEdit() ? 'تعديل الطالب' : 'إضافة طالب جديد' }}
         </h3>
 
-```
     <button
       class="modal-close"
       (click)="fermerModal()"
@@ -301,7 +295,6 @@
     </button>
   </div>
 </div>
-```
 
   </div>
 }
