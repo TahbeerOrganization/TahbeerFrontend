@@ -1,306 +1,578 @@
-
-import { Component,  signal,  computed,  OnInit} from '@angular/core';
+import { Component, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {  ActivatedRoute,  RouterLink} from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { SupabaseService } from '../../../core/services/supabase.service';
-/* ═══════════════════════════════════════════════
-   INTERFACES
-═══════════════════════════════════════════════ */
 
 interface Etudiant {
-  id: number;
-  nom: string;
-  groupe: string;
+id: string;
+nom: string;
+groupe_id?: number;
+groupe?: string;
 }
 
-
-interface Hifd {
-  id: number;
-
-  etudiant: {
-    id?: number;
-    nom: string;
-    groupe: string;
-  };
-
-  sourate: string;
-
-  ayat_debut: number;
-  ayat_fin: number;
-  nombre_ayat: number;
-
-  evaluation:
-    | 'ممتاز'
-    | 'جيد'
-    | 'متوسط'
-    | 'ضعيف';
-
-  date: string;
-
-  notes?: string;
+interface Sourate {
+id: number;
+nom: string;
+nombre_ayat?: number;
 }
 
+interface Suivi {
+id: string;
+etudiant_id: string;
+sourate_id: number;
+ayat_debut: number;
+ayat_fin: number;
+statut: string;
+evaluation: string;
+updated_at: string;
 
-/* ═══════════════════════════════════════════════
-   COMPONENT
-═══════════════════════════════════════════════ */
+etudiant: {
+id: string;
+nom: string;
+groupe: string;
+};
+
+sourate: string;
+}
 
 @Component({
-  selector: 'app-hifd',
-  standalone: true,
-  imports: [CommonModule,SidebarComponent  ],
-  templateUrl: './hifd.component.html',
-  styleUrl: './hifd.component.css'
+selector: 'app-hifd',
+standalone: true,
+imports: [CommonModule, SidebarComponent],
+templateUrl: './hifd.component.html',
+styleUrl: './hifd.component.css'
 })
 export class HifdComponent implements OnInit {
 
+constructor(
+private route: ActivatedRoute,
+private sb: SupabaseService
+) {}
 
-  /* ═══════════════════════════════════════════
-     CONSTRUCTOR
-  ═══════════════════════════════════════════ */
+loading = signal(false);
+formLoading = signal(false);
+showModal = signal(false);
+modeEdit = signal(false);
 
-  constructor(
-    private route: ActivatedRoute, private sb: SupabaseService
-  ) {}
-
-
-  /* ═══════════════════════════════════════════
-     STATE
-  ═══════════════════════════════════════════ */
-
-  loading = signal(false);
-
-  formLoading = signal(false);
-
-  showModal = signal(false);
-
-  modeEdit = signal(false);
 filtreGroupe = signal('');
 filtreEtudiant = signal('');
-filtreEvaluation = signal('');
+filtreStatut = signal('');
 
-etudiants = signal<any[]>([]);
+etudiants = signal<Etudiant[]>([]);
 groupes = signal<any[]>([]);
-
-hifd = signal<Hifd[]>([]);
+sourates = signal<Sourate[]>([]);
+suivi = signal<Suivi[]>([]);
 
 form = signal({
-  id: null as number | null,
-  etudiant_id: '',
-  sourate: '',
-  ayat_debut: 1,
-  ayat_fin: 1,
-  evaluation: '',
-  notes: ''
+id: null as string | null,
+etudiant_id: '',
+sourate_id: '',
+ayat_debut: 1,
+ayat_fin: 1,
+statut: '',
+evaluation: ''
 });
 
-ngOnInit(): void {
-  this.route.queryParams.subscribe(params => {
-    this.filtreEtudiant.set(params['etudiant'] || '');
-    this.loadData();
-  });
+ngOnInit() {
+this.route.queryParams.subscribe(params => {
+this.filtreEtudiant.set(params['etudiant'] || '');
+this.loadData();
+});
 }
 
-async loadData(): Promise<void> {
-  this.loading.set(true);
+async loadData() {
+this.loading.set(true);
 
-  const { data: groupes } = await this.sb.client
-    .from('groupes')
-    .select('*')
-    .order('nom');
+
+try {
+  /* =========================
+     GROUPES
+  ========================= */
+
+  const { data: groupes, error: groupesError } =
+    await this.sb.client
+      .from('groupes')
+      .select('id, nom')
+      .order('nom');
+
+  if (groupesError) {
+    console.error('❌ GROUPES:', groupesError);
+  }
 
   this.groupes.set(groupes || []);
 
-  const { data: students, error } = await this.sb.client
-    .from('profiles')
-    .select('id, nom, groupe_id, groupes(id, nom)')
-    .eq('role', 'etudiant')
-    .order('nom');
+  /* =========================
+     SOURATES
+     
+     IMPORTANT:
+     La table contient actuellement
+     id + nom.
+     On ne demande PAS nombre_ayat.
+  ========================= */
 
-  if (error) {
-    this.loading.set(false);
-    return;
+  const { data: sourates, error: souratesError } =
+    await this.sb.client
+      .from('sourates')
+      .select('id, nom')
+      .order('id', { ascending: true });
+
+  if (souratesError) {
+    console.error('❌ SOURATES:', souratesError);
+    this.sourates.set([]);
+  } else {
+    const listeSourates: Sourate[] =
+      (sourates || []).map((s: any) => ({
+        id: Number(s.id),
+        nom: String(s.nom || '')
+      }));
+
+    console.log('✅ SOURATES:', listeSourates);
+
+    this.sourates.set(listeSourates);
   }
 
-  this.etudiants.set(
-    (students || []).map((e: any) => ({
-      ...e,
-      groupe: e.groupes?.nom || ''
-    }))
-  );
+  /* =========================
+     ETUDIANTS
+  ========================= */
 
-  await this.loadHifd();
+  const { data: students, error: studentsError } =
+    await this.sb.client
+      .from('profiles')
+      .select('id, nom, groupe_id')
+      .eq('role', 'etudiant')
+      .order('nom');
+      console.log( '👨‍🎓 STUDENTS RAW:', students ); console.log( '👨‍🎓 STUDENTS ERROR:', studentsError );
+
+  if (studentsError) {
+    console.error('❌ ETUDIANTS:', studentsError);
+    this.etudiants.set([]);
+  } else {
+    this.etudiants.set(
+      (students || []).map((e: any) => ({
+        id: String(e.id),
+        nom: e.nom || '',
+        groupe_id: e.groupe_id,
+        groupe:
+          groupes?.find(
+            (g: any) =>
+              Number(g.id) === Number(e.groupe_id)
+          )?.nom || ''
+      }))
+    );
+  }
+
+  /* =========================
+     SUIVI
+  ========================= */
+
+  await this.loadSuivi();
+
+} catch (error) {
+
+  console.error('❌ LOAD DATA:', error);
+
+} finally {
+
   this.loading.set(false);
+
 }
 
-async loadHifd(): Promise<void> {
+
+}
+
+async loadSuivi() {
   const { data, error } = await this.sb.client
-    .from('hifd')
+    .from('suivi_sourates')
     .select(`
-      *,
-      profiles!hifd_etudiant_id_fkey(
-        id, nom, groupe_id,
-        groupes(id, nom)
+      id,
+      etudiant_id,
+      sourate_id,
+      ayat_debut,
+      ayat_fin,
+      statut,
+      evaluation,
+      updated_at,
+      profiles:etudiant_id (
+        id,
+        nom,
+        groupe_id
+      ),
+      sourates:sourate_id (
+        id,
+        nom
       )
     `)
-    .order('date', { ascending: false });
+    .order('id', { ascending: false });
 
   if (error) {
-    console.error(error);
+    console.error('❌ SUIVI ERROR:', error);
+    this.suivi.set([]);
     return;
   }
 
-  this.hifd.set(
-    (data || []).map((h: any) => ({
+  console.log('📚 SUIVI WITH JOIN:', data);
+
+  const result: Suivi[] = (data || []).map((h: any) => {
+
+    console.log('🔎 HIFD:', {
       id: h.id,
+      etudiant_id: h.etudiant_id,
+      profiles: h.profiles,
+      sourates: h.sourates
+    });
+
+    return {
+      id: String(h.id),
+
+      etudiant_id: String(h.etudiant_id),
+
+      sourate_id: Number(h.sourate_id),
+
+      ayat_debut: Number(h.ayat_debut || 1),
+      ayat_fin: Number(h.ayat_fin || 1),
+
+      statut: h.statut || '',
+      evaluation: h.evaluation || '',
+      updated_at: h.updated_at || '',
+
       etudiant: {
-        id: h.profiles?.id,
-        nom: h.profiles?.nom || '',
-        groupe: h.profiles?.groupes?.nom || ''
+        id: String(h.profiles?.id || h.etudiant_id),
+        nom: h.profiles?.nom || 'طالب غير معروف',
+        groupe: ''
       },
-      sourate: h.sourate,
-      ayat_debut: h.ayat_debut,
-      ayat_fin: h.ayat_fin,
-      nombre_ayat: h.nombre_ayat,
-      evaluation: h.evaluation,
-      date: h.date,
-      notes: h.notes || ''
-    }))
-  );
+
+      sourate: h.sourates?.nom || 'سورة غير موجودة'
+    };
+  });
+
+  this.suivi.set(result);
+
+  console.log('✅ SUIVI FINAL:', result);
 }
 
-hifdFiltres = computed(() => {
-  const etudiant = this.filtreEtudiant();
-  const groupe = this.filtreGroupe();
-  const evaluation = this.filtreEvaluation();
+/* =========================
+SOURATE HELPERS
+========================= */
 
-  return this.hifd().filter(h =>
-    (!etudiant || String(this.getEtudiantId(h)) === etudiant) &&
-    (!groupe || this.getGroupeId(h) === Number(groupe)) &&
-    (!evaluation || h.evaluation === evaluation)
+getSourateNom(): string {
+
+
+const sourateId =
+  Number(this.form().sourate_id);
+
+const sourate =
+  this.sourates().find(
+    s => Number(s.id) === sourateId
   );
-});
+
+return sourate?.nom || '';
+
+
+}
+
+/* =========================
+ETUDIANTS FILTRES
+========================= */
 
 etudiantsFiltres = computed(() => {
-  const groupe = this.filtreGroupe();
-  return groupe
-    ? this.etudiants().filter(e => String(e.groupe_id) === groupe)
-    : this.etudiants();
+
+
+const groupe =
+  this.filtreGroupe();
+
+if (!groupe) {
+  return this.etudiants();
+}
+
+return this.etudiants().filter(
+  e =>
+    String(e.groupe_id) === groupe
+);
+
+
 });
 
-totalAyat = computed(() =>
-  this.hifdFiltres().reduce((t, h) => t + Number(h.nombre_ayat), 0)
-);
+/* =========================
+SUIVI FILTRE
+========================= */
 
-nombreExcellent = computed(() =>
-  this.hifdFiltres().filter(h => h.evaluation === 'ممتاز').length
-);
+suiviFiltres = computed(() => {
 
-nombreRevision = computed(() =>
-  this.hifdFiltres().filter(h => h.evaluation === 'ضعيف').length
-);
 
-updateForm(field: string, value: any): void {
-  this.form.update(f => ({ ...f, [field]: value }));
+const etudiant =
+  this.filtreEtudiant();
+
+const groupe =
+  this.filtreGroupe();
+
+const statut =
+  this.filtreStatut();
+
+return this.suivi().filter(h => {
+
+  const student =
+  this.etudiants().find(
+    e => e.id === h.etudiant_id
+  );
+
+  return (
+
+    (!etudiant ||
+      h.etudiant_id === etudiant)
+
+    &&
+
+    (!groupe ||
+      String(student?.groupe_id) === groupe)
+
+    &&
+
+    (!statut ||
+      h.statut === statut)
+
+  );
+});
+
+
+});
+
+/* =========================
+FORM
+========================= */
+
+updateForm(
+field: string,
+value: any
+) {
+
+
+this.form.update(f => ({
+  ...f,
+  [field]: value
+}));
+
+
 }
 
-ouvrirAjout(): void {
-  this.modeEdit.set(false);
-  this.form.set({
-    id: null,
-    etudiant_id: this.filtreEtudiant(),
-    sourate: '',
-    ayat_debut: 1,
-    ayat_fin: 1,
-    evaluation: '',
-    notes: ''
-  });
-  this.showModal.set(true);
+ouvrirAjout() {
+
+
+this.modeEdit.set(false);
+
+this.form.set({
+  id: null,
+
+  etudiant_id:
+    this.filtreEtudiant(),
+
+  sourate_id: '',
+
+  ayat_debut: 1,
+
+  ayat_fin: 1,
+
+  statut: '',
+
+  evaluation: ''
+});
+
+this.showModal.set(true);
+
+
 }
 
-modifier(h: Hifd): void {
+modifier(h: Suivi) {
+  console.log('✏️ EDIT:', h);
+
   this.modeEdit.set(true);
+
   this.form.set({
     id: h.id,
-    etudiant_id: String(this.getEtudiantId(h) || ''),
-    sourate: h.sourate,
+    etudiant_id: h.etudiant_id,
+    sourate_id: String(h.sourate_id),
     ayat_debut: h.ayat_debut,
     ayat_fin: h.ayat_fin,
-    evaluation: h.evaluation,
-    notes: h.notes || ''
+    statut: h.statut,
+    evaluation: h.evaluation
   });
+
   this.showModal.set(true);
 }
 
-fermerModal(): void {
-  this.showModal.set(false);
+fermerModal() {
+this.showModal.set(false);
 }
 
-async soumettre(): Promise<void> {
+/* =========================
+SAVE
+========================= */
+
+async soumettre() {
   const f = this.form();
 
-  if (!f.etudiant_id || !f.sourate.trim() || !f.evaluation) return;
+  if (
+    !f.etudiant_id ||
+    !f.sourate_id ||
+    !f.statut ||
+    !f.evaluation
+  ) {
+    alert('عمر جميع الخانات المطلوبة');
+    return;
+  }
 
   const debut = Number(f.ayat_debut);
   const fin = Number(f.ayat_fin);
 
-  if (debut < 1 || fin < debut) return;
-
-  this.formLoading.set(true);
-
-  const payload = {
-    etudiant_id: Number(f.etudiant_id),
-    sourate: f.sourate.trim(),
-    ayat_debut: debut,
-    ayat_fin: fin,
-    nombre_ayat: fin - debut + 1,
-    evaluation: f.evaluation,
-    notes: f.notes || '',
-    date: new Date().toISOString().split('T')[0]
-  };
-
-  const result = this.modeEdit() && f.id
-    ? await this.sb.client.from('hifd').update(payload).eq('id', f.id)
-    : await this.sb.client.from('hifd').insert(payload);
-
-  if (!result.error) {
-    await this.loadHifd();
-    this.showModal.set(false);
-  } else {
-    console.error(result.error);
+  if (
+    !Number.isInteger(debut) ||
+    !Number.isInteger(fin) ||
+    debut < 1 ||
+    fin < debut
+  ) {
+    alert('الآيات المدخلة غير صحيحة');
+    return;
   }
 
-  this.formLoading.set(false);
+  this.formLoading.set(true);
+  console.log('👤 FORM ETUDIANT ID:', f.etudiant_id);
+  const payload = {
+    etudiant_id: f.etudiant_id,
+    sourate_id: Number(f.sourate_id),
+    ayat_debut: debut,
+    ayat_fin: fin,
+    statut: f.statut,
+    evaluation: f.evaluation,
+    updated_at: new Date().toISOString()
+  };
+
+  console.log('📤 PAYLOAD:', payload);
+
+  try {
+    let result;
+
+    if (this.modeEdit() && f.id !== null) {
+
+      result = await this.sb.client
+        .from('suivi_sourates')
+        .update(payload)
+        .eq('id', f.id);
+
+    } else {
+
+      result = await this.sb.client
+        .from('suivi_sourates')
+        .insert(payload);
+    }
+
+    if (result.error) {
+      console.error('❌ SUPABASE:', {
+        message: result.error.message,
+        details: result.error.details,
+        hint: result.error.hint,
+        code: result.error.code
+      });
+
+      alert(result.error.message);
+      return;
+    }
+
+    await this.loadSuivi();
+    this.showModal.set(false);
+
+  } catch (error) {
+
+    console.error('❌ ERROR:', error);
+    alert('حدث خطأ أثناء الحفظ');
+
+  } finally {
+    this.formLoading.set(false);
+  }
 }
 
-async supprimer(h: Hifd): Promise<void> {
-  if (!confirm(`هل تريد حذف تسجيل حفظ ${h.sourate}؟`)) return;
+/* =========================
+DELETE
+========================= */
+
+async supprimer(h: Suivi) {
+
+  if (!h.id || h.id === 'undefined' || h.id === 'null') {
+    console.error('❌ HIFD ID INVALID:', h);
+    alert('معرف الحفظ غير صالح');
+    return;
+  }
+
+  if (!confirm(`هل تريد حذف حفظ ${h.sourate}؟`)) {
+    return;
+  }
+
+  console.log('🗑️ DELETE HIFD UUID:', h.id);
 
   const { error } = await this.sb.client
-    .from('hifd')
+    .from('suivi_sourates')
     .delete()
     .eq('id', h.id);
 
-  if (!error) await this.loadHifd();
+  if (error) {
+    console.error('❌ DELETE ERROR:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+
+    alert(error.message);
+    return;
+  }
+
+  console.log('✅ DELETE OK');
+
+  await this.loadSuivi();
 }
 
-getEtudiantId(h: Hifd): number | undefined {
-  return h.etudiant.id ||
-    this.etudiants().find(e => e.nom === h.etudiant.nom)?.id;
+/* =========================
+BADGES
+========================= */
+
+badge(statut: string) {
+
+return {
+
+  'مكتمل':
+    'badge-green',
+
+  'جاري':
+    'badge-blue',
+
+  'مراجعة':
+    'badge-amber',
+
+  'لم يبدأ':
+    'badge-gray'
+
+}[statut] || 'badge-gray';
+
 }
 
-getGroupeId(h: Hifd): number | null {
-  const e = this.etudiants().find(x => x.id === this.getEtudiantId(h));
-  return e?.groupe_id ? Number(e.groupe_id) : null;
-}
+evaluationBadge(
+evaluation: string
+) {
 
-getEvaluationBadge(evaluation: string): string {
-  return {
-    'ممتاز': 'badge-green',
-    'جيد': 'badge-blue',
-    'متوسط': 'badge-amber',
-    'ضعيف': 'badge-gray'
-  }[evaluation] || 'badge-gray';
+return {
+
+  'ممتاز':
+    'badge-green',
+
+  'جيد':
+    'badge-blue',
+
+  'متوسط':
+    'badge-amber',
+
+  'ضعيف':
+    'badge-gray'
+
+}[evaluation] || 'badge-gray';
+
 }
 }
