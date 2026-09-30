@@ -1,13 +1,10 @@
 <div class="layout" dir="rtl">
 
-  <!-- ═════════════ الشريط الجانبي ═════════════ -->
   <app-sidebar activePage="paiements"></app-sidebar>
 
-
-  <!-- ═════════════ المحتوى الرئيسي ═════════════ -->
   <main class="main">
 
-    <!-- الشريط العلوي -->
+    <!-- TOPBAR -->
     <div class="topbar">
 
       <div>
@@ -25,30 +22,35 @@
     </div>
 
 
-    <!-- المحتوى -->
     <div class="content">
 
-
-      <!-- ═════════════ خيارات البحث ═════════════ -->
+      <!-- =========================
+           FILTERS
+      ========================== -->
 
       <div class="filters-bar">
 
+        <!-- ETUDIANT -->
 
-        <!-- اختيار الطالب -->
         <select
           class="filter-select student-select"
           [value]="filtreEtudiant()"
-          (change)="filtreEtudiant.set($any($event.target).value)"
+          (change)="changerEtudiant(
+            $any($event.target).value
+          )"
         >
 
           <option value="">
             اختر الطالب
           </option>
 
-          @for (e of etudiants(); track e.id) {
+          @for (
+            e of etudiants();
+            track e.id
+          ) {
 
             <option [value]="e.id">
-              {{ e.nom }} - {{ e.groupe }}
+              {{ e.nom }}
             </option>
 
           }
@@ -56,11 +58,51 @@
         </select>
 
 
-        <!-- اختيار السنة -->
+        <!-- PROGRAMME -->
+
+        @if (filtreEtudiant()) {
+
+          <select
+            class="filter-select"
+            [value]="programmeSelectionne()"
+            (change)="programmeSelectionne.set(
+              $any($event.target).value
+            )"
+          >
+
+            <option value="">
+              اختر البرنامج
+            </option>
+
+            @for (
+              p of programmesEtudiant();
+              track p.id
+            ) {
+
+              <option [value]="p.id">
+
+                {{ p.nom }}
+
+                -
+                {{ formatMoney(p.montant) }}
+
+              </option>
+
+            }
+
+          </select>
+
+        }
+
+
+        <!-- ANNEE -->
+
         <select
           class="filter-select"
           [value]="annee()"
-          (change)="changerAnnee($any($event.target).value)"
+          (change)="changerAnnee(
+            $any($event.target).value
+          )"
         >
 
           <option value="2026">
@@ -78,35 +120,11 @@
         </select>
 
 
-        <!-- قيمة الاشتراك الشهري -->
-        <div class="amount-control">
+        <!-- REFRESH -->
 
-          <label>
-            الرسوم الشهرية
-          </label>
-
-          <div class="amount-input-wrap">
-
-            <input
-              type="number"
-              min="0"
-              [value]="montantMensuel()"
-              (input)="changerMontant($any($event.target).value)"
-            />
-
-            <span>
-              درهم
-            </span>
-
-          </div>
-
-        </div>
-
-
-        <!-- تحديث -->
         <button
           class="btn-ghost"
-          (click)="loadPaiements()"
+          (click)="loadData()"
         >
           🔄 تحديث البيانات
         </button>
@@ -114,8 +132,9 @@
       </div>
 
 
-
-      <!-- ═════════════ لم يتم اختيار طالب ═════════════ -->
+      <!-- =========================
+           NO STUDENT
+      ========================== -->
 
       @if (!filtreEtudiant()) {
 
@@ -130,18 +149,18 @@
           </h3>
 
           <p>
-            يرجى اختيار طالب من القائمة لعرض ومتابعة مدفوعاته الشهرية.
+            اختر الطالب لعرض برامجه ومدفوعاته.
           </p>
 
         </div>
 
       }
 
-
       @else {
 
-
-        <!-- ═════════════ معلومات الطالب ═════════════ -->
+        <!-- =========================
+             STUDENT HEADER
+        ========================== -->
 
         @if (etudiantSelectionne()) {
 
@@ -150,7 +169,13 @@
             <div class="student-header-info">
 
               <div class="big-avatar">
-                {{ etudiantSelectionne()?.nom?.charAt(0) }}
+
+                {{
+                  etudiantSelectionne()
+                    ?.nom
+                    ?.charAt(0)
+                }}
+
               </div>
 
               <div>
@@ -160,7 +185,7 @@
                 </h3>
 
                 <span>
-                  {{ etudiantSelectionne()?.groupe }}
+                  {{ programmeActuel()?.nom || 'اختر البرنامج' }}
                 </span>
 
               </div>
@@ -177,247 +202,326 @@
         }
 
 
+        <!-- =========================
+             NO PROGRAMME
+        ========================== -->
 
-        <!-- ═════════════ الإحصائيات ═════════════ -->
+        @if (
+          programmesEtudiant().length === 0
+        ) {
 
-        <div class="stats-grid">
+          <div class="card empty-student">
 
-
-          <!-- الأشهر المدفوعة -->
-
-          <div class="stat-card">
-
-            <div class="stat-icon green">
-              ✓
+            <div class="empty-icon">
+              📚
             </div>
 
-            <div class="stat-info">
+            <h3>
+              لا يوجد برنامج
+            </h3>
 
-              <span>
-                الأشهر المدفوعة
-              </span>
-
-              <strong>
-                {{ nombreMoisPayes() }}
-              </strong>
-
-            </div>
+            <p>
+              هذا الطالب غير مرتبط بأي برنامج.
+            </p>
 
           </div>
 
+        }
 
+        @else if (!programmeSelectionne()) {
 
-          <!-- الأشهر غير المدفوعة -->
+          <div class="card empty-student">
 
-          <div class="stat-card">
-
-            <div class="stat-icon red">
-              !
+            <div class="empty-icon">
+              📚
             </div>
 
-            <div class="stat-info">
+            <h3>
+              اختر البرنامج
+            </h3>
 
-              <span>
-                الأشهر غير المدفوعة
-              </span>
-
-              <strong>
-                {{ nombreMoisNonPayes() }}
-              </strong>
-
-            </div>
+            <p>
+              الطالب مسجل في أكثر من برنامج.
+              اختر البرنامج لعرض المدفوعات.
+            </p>
 
           </div>
 
+        }
 
+        @else {
 
-          <!-- إجمالي المدفوعات -->
+          <!-- =========================
+               PROGRAMME INFO
+          ========================== -->
 
-          <div class="stat-card">
-
-            <div class="stat-icon blue">
-              💰
-            </div>
-
-            <div class="stat-info">
-
-              <span>
-                إجمالي المدفوعات
-              </span>
-
-              <strong>
-                {{ formatMoney(totalPaye()) }}
-                درهم
-              </strong>
-
-            </div>
-
-          </div>
-
-
-
-          <!-- المبلغ المتبقي -->
-
-          <div class="stat-card">
-
-            <div class="stat-icon orange">
-              💳
-            </div>
-
-            <div class="stat-info">
-
-              <span>
-                المبلغ المتبقي
-              </span>
-
-              <strong>
-                {{ formatMoney(totalRestant()) }}
-                درهم
-              </strong>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-
-        <!-- ═════════════ المدفوعات الشهرية ═════════════ -->
-
-        <div class="card months-card">
-
-
-          <!-- عنوان القسم -->
-
-          <div class="card-header">
+          <div class="card programme-info-card">
 
             <div>
 
-              <h3>
-                المدفوعات الشهرية
-              </h3>
+              <span>
+                البرنامج
+              </span>
 
-              <p>
-                حدد الشهر الذي تم فيه دفع الرسوم.
-              </p>
+              <strong>
+                {{ programmeActuel()?.nom }}
+              </strong>
 
             </div>
 
+            <div>
 
-            <div class="monthly-price">
+              <span>
+                الرسوم الشهرية
+              </span>
 
-              {{ formatMoney(montantMensuel()) }}
-
-              <small>
-                درهم / الشهر
-              </small>
+              <strong>
+                {{
+                  formatMoney(
+                    programmeActuel()?.montant ?? 0
+                  )
+                }}
+              </strong>
 
             </div>
 
           </div>
 
 
+          <!-- =========================
+               STATS
+          ========================== -->
 
-          <!-- الأشهر -->
+          <div class="stats-grid">
 
-          <div class="months-grid">
+            <div class="stat-card">
 
-            @for (m of mois; track m.id) {
+              <div class="stat-icon green">
+                ✓
+              </div>
 
-              <div
-                class="month-card"
-                [class.paid]="estPaye(m.id)"
-                [class.unpaid]="!estPaye(m.id)"
-              >
+              <div class="stat-info">
 
+                <span>
+                  الأشهر المدفوعة
+                </span>
 
-                <!-- اسم الشهر والحالة -->
-
-                <div class="month-top">
-
-                  <div class="month-name">
-                    {{ m.nom }}
-                  </div>
-
-
-                  @if (estPaye(m.id)) {
-
-                    <span class="status paid-status">
-                      مدفوع
-                    </span>
-
-                  }
-
-                  @else {
-
-                    <span class="status unpaid-status">
-                      غير مدفوع
-                    </span>
-
-                  }
-
-                </div>
-
-
-
-                <!-- حالة الدفع -->
-
-                <div class="month-bottom">
-
-                  <label class="checkbox-wrap">
-
-                    <input
-                      type="checkbox"
-                      [checked]="estPaye(m.id)"
-                      (change)="togglePaiement(m.id)"
-                    />
-
-                    <span class="custom-checkbox">
-
-                      @if (estPaye(m.id)) {
-                        ✓
-                      }
-
-                    </span>
-
-                    <span>
-                      تم دفع الرسوم
-                    </span>
-
-                  </label>
-
-
-                  <strong>
-                    {{ formatMoney(montantMensuel()) }}
-                    درهم
-                  </strong>
-
-                </div>
-
-
-
-                <!-- تاريخ الدفع -->
-
-                @if (getPaiement(m.id)?.date_paiement) {
-
-                  <div class="payment-date">
-
-                    تاريخ الدفع:
-
-                    {{ getPaiement(m.id)?.date_paiement | date:'dd/MM/yyyy' }}
-
-                  </div>
-
-                }
+                <strong>
+                  {{ nombreMoisPayes() }}
+                </strong>
 
               </div>
 
-            }
+            </div>
+
+
+            <div class="stat-card">
+
+              <div class="stat-icon red">
+                !
+              </div>
+
+              <div class="stat-info">
+
+                <span>
+                  الأشهر غير المدفوعة
+                </span>
+
+                <strong>
+                  {{ nombreMoisNonPayes() }}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+              <div class="stat-icon blue">
+                💰
+              </div>
+
+              <div class="stat-info">
+
+                <span>
+                  إجمالي المدفوعات
+                </span>
+
+                <strong>
+                  {{ formatMoney(totalPaye()) }}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+              <div class="stat-icon orange">
+                💳
+              </div>
+
+              <div class="stat-info">
+
+                <span>
+                  المبلغ المتبقي
+                </span>
+
+                <strong>
+                  {{ formatMoney(totalRestant()) }}
+                </strong>
+
+              </div>
+
+            </div>
 
           </div>
 
-        </div>
+
+          <!-- =========================
+               MONTHS
+          ========================== -->
+
+          <div class="card months-card">
+
+            <div class="card-header">
+
+              <div>
+
+                <h3>
+                  المدفوعات الشهرية
+                </h3>
+
+                <p>
+                  حدد الأشهر التي تم دفع رسومها.
+                </p>
+
+              </div>
+
+              <div class="monthly-price">
+
+                {{
+                  formatMoney(
+                    programmeActuel()?.montant ?? 0
+                  )
+                }}
+
+                <small>
+                  / الشهر
+                </small>
+
+              </div>
+
+            </div>
+
+
+            <div class="months-grid">
+
+              @for (
+                m of mois;
+                track m.id
+              ) {
+
+                <div
+                  class="month-card"
+                  [class.paid]="estPaye(m.id)"
+                  [class.unpaid]="!estPaye(m.id)"
+                >
+
+                  <div class="month-top">
+
+                    <div class="month-name">
+                      {{ m.nom }}
+                    </div>
+
+                    @if (estPaye(m.id)) {
+
+                      <span class="status paid-status">
+                        مدفوع
+                      </span>
+
+                    }
+
+                    @else {
+
+                      <span class="status unpaid-status">
+                        غير مدفوع
+                      </span>
+
+                    }
+
+                  </div>
+
+
+                  <div class="month-bottom">
+
+                    <label class="checkbox-wrap">
+
+                      <input
+                        type="checkbox"
+                        [checked]="estPaye(m.id)"
+                        [disabled]="saving()"
+                        (change)="togglePaiement(m.id)"
+                      />
+
+                      <span class="custom-checkbox">
+
+                        @if (estPaye(m.id)) {
+                          ✓
+                        }
+
+                      </span>
+
+                      <span>
+                        تم دفع الرسوم
+                      </span>
+
+                    </label>
+
+
+                    <strong>
+
+                      {{
+                        formatMoney(
+                          programmeActuel()?.montant ?? 0
+                        )
+                      }}
+
+                    </strong>
+
+                  </div>
+
+
+                  @if (
+                    getPaiement(m.id)
+                      ?.date_paiement
+                  ) {
+
+                    <div class="payment-date">
+
+                      تاريخ الدفع:
+
+                      {{
+                        getPaiement(m.id)
+                          ?.date_paiement
+                          | date:'dd/MM/yyyy'
+                      }}
+
+                    </div>
+
+                  }
+
+                </div>
+
+              }
+
+            </div>
+
+          </div>
+
+        }
 
       }
 

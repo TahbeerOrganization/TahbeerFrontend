@@ -1,23 +1,24 @@
-import { Component,  signal,  computed,  OnInit} from '@angular/core';
+import { Component, computed, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {  ActivatedRoute,  RouterLink} from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
-
-
-/* ═══════════════════════════════════════════════
-   INTERFACES
-═══════════════════════════════════════════════ */
+import { SupabaseService } from '../../../core/services/supabase.service';
 
 interface Etudiant {
-  id: number;
+  id: string;
   nom: string;
-  groupe: string;
 }
 
+interface Programme {
+  id: string;
+  nom: string;
+  montant: number;
+}
 
 interface Paiement {
-  id: number;
-  etudiant_id: number;
+  id: string;
+  etudiant_id: string;
+  programme_id: string;
   mois: number;
   annee: number;
   montant: number;
@@ -25,345 +26,511 @@ interface Paiement {
   date_paiement?: string;
 }
 
-
-/* ═══════════════════════════════════════════════
-   COMPONENT
-═══════════════════════════════════════════════ */
-
 @Component({
   selector: 'app-paiements',
-
-
+  standalone: true,
   imports: [
     CommonModule,
     SidebarComponent
   ],
-
   templateUrl: './payement.component.html',
-
   styleUrl: './payement.component.css'
 })
 export class PaiementsComponent implements OnInit {
 
-
-  /* ═══════════════════════════════════════════
-     CONSTRUCTOR
-  ═══════════════════════════════════════════ */
-
   constructor(
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private sb: SupabaseService
   ) {}
 
-
-  /* ═══════════════════════════════════════════
+  /* ==============================
      STATE
-  ═══════════════════════════════════════════ */
+  ============================== */
 
   loading = signal(false);
-
   saving = signal(false);
 
-
-  /* ═══════════════════════════════════════════
-     FILTER
-  ═══════════════════════════════════════════ */
-
   filtreEtudiant = signal('');
+  annee = signal(new Date().getFullYear());
 
+  etudiants = signal<Etudiant[]>([]);
+  programmes = signal<Programme[]>([]);
+  paiements = signal<Paiement[]>([]);
 
-  annee = signal(
-    new Date().getFullYear()
-  );
+  /* ==============================
+     MONTANTS DES PROGRAMMES
+     تعدلهم من هنا فقط
+  ============================== */
 
+  readonly programmePrix: Record<string, number> = {
+    'الحفظ': 200,
+    'التجويد': 150,
+    'الاربعون النووية': 100,
+    'سورة البقرة': 120,
+    'سورة الكهف': 120
+  };
 
-  montantMensuel = signal(200);
-
-
-  /* ═══════════════════════════════════════════
-     MONTHS
-  ═══════════════════════════════════════════ */
+  /* ==============================
+     MOIS
+  ============================== */
 
   mois = [
-    {
-      id: 1,
-      nom: 'يناير'
-    },
-    {
-      id: 2,
-      nom: 'فبراير'
-    },
-    {
-      id: 3,
-      nom: 'مارس'
-    },
-    {
-      id: 4,
-      nom: 'أبريل'
-    },
-    {
-      id: 5,
-      nom: 'ماي'
-    },
-    {
-      id: 6,
-      nom: 'يونيو'
-    },
-    {
-      id: 7,
-      nom: 'يوليوز'
-    },
-    {
-      id: 8,
-      nom: 'غشت'
-    },
-    {
-      id: 9,
-      nom: 'شتنبر'
-    },
-    {
-      id: 10,
-      nom: 'أكتوبر'
-    },
-    {
-      id: 11,
-      nom: 'نونبر'
-    },
-    {
-      id: 12,
-      nom: 'دجنبر'
-    }
+    { id: 1, nom: 'يناير' },
+    { id: 2, nom: 'فبراير' },
+    { id: 3, nom: 'مارس' },
+    { id: 4, nom: 'أبريل' },
+    { id: 5, nom: 'ماي' },
+    { id: 6, nom: 'يونيو' },
+    { id: 7, nom: 'يوليوز' },
+    { id: 8, nom: 'غشت' },
+    { id: 9, nom: 'شتنبر' },
+    { id: 10, nom: 'أكتوبر' },
+    { id: 11, nom: 'نونبر' },
+    { id: 12, nom: 'دجنبر' }
   ];
 
+  /* ==============================
+     PROGRAMMES DE L'ETUDIANT
+  ============================== */
 
-  /* ═══════════════════════════════════════════
-     ETUDIANTS
-  ═══════════════════════════════════════════ */
+  programmesEtudiant = signal<Programme[]>([]);
 
-  etudiants = signal<Etudiant[]>([
+  /* ==============================
+     PROGRAMME SELECTIONNE
+  ============================== */
 
-    {
-      id: 1,
-      nom: 'abcd',
-      groupe: 'المجموعة أ'
-    },
+  programmeSelectionne = signal('');
 
-    {
-      id: 2,
-      nom: 'ra',
-      groupe: 'مجموعة الأطفال'
-    }
-
-  ]);
-
-
-  /* ═══════════════════════════════════════════
-     PAIEMENTS
-  ═══════════════════════════════════════════ */
-
-  paiements = signal<Paiement[]>([
-
-    {
-      id: 1,
-      etudiant_id: 1,
-      mois: 1,
-      annee: 2026,
-      montant: 200,
-      paye: true,
-      date_paiement: '2026-01-05'
-    },
-
-    {
-      id: 2,
-      etudiant_id: 1,
-      mois: 2,
-      annee: 2026,
-      montant: 200,
-      paye: true,
-      date_paiement: '2026-02-04'
-    },
-
-    {
-      id: 3,
-      etudiant_id: 1,
-      mois: 3,
-      annee: 2026,
-      montant: 200,
-      paye: false
-    },
-
-    {
-      id: 4,
-      etudiant_id: 2,
-      mois: 1,
-      annee: 2026,
-      montant: 200,
-      paye: true,
-      date_paiement: '2026-01-08'
-    }
-
-  ]);
-
-
-  /* ═══════════════════════════════════════════
+  /* ==============================
      INIT
-  ═══════════════════════════════════════════ */
+  ============================== */
 
   ngOnInit(): void {
 
     this.route.queryParams.subscribe(params => {
 
-      const etudiantId =
-        params['etudiant'];
+      const etudiantId = params['etudiant'];
 
       if (etudiantId) {
-
-        this.filtreEtudiant.set(
-          String(etudiantId)
-        );
-
+        this.filtreEtudiant.set(String(etudiantId));
       }
 
-      this.loadPaiements();
+      this.loadData();
 
     });
 
   }
 
+  /* ==============================
+     LOAD DATA
+  ============================== */
 
-  /* ═══════════════════════════════════════════
-     LOAD
-  ═══════════════════════════════════════════ */
-
-  loadPaiements(): void {
+  async loadData() {
 
     this.loading.set(true);
 
-    setTimeout(() => {
+    try {
+
+      await this.loadEtudiants();
+      await this.loadPaiements();
+
+      if (this.filtreEtudiant()) {
+        await this.loadProgrammesEtudiant(
+          this.filtreEtudiant()
+        );
+      }
+
+    } catch (error) {
+
+      console.error('❌ LOAD DATA:', error);
+
+    } finally {
 
       this.loading.set(false);
 
-    }, 300);
+    }
 
   }
 
+  /* ==============================
+     LOAD ETUDIANTS
+  ============================== */
 
-  /* ═══════════════════════════════════════════
-     ETUDIANT SELECTIONNE
-  ═══════════════════════════════════════════ */
+  async loadEtudiants() {
 
-  etudiantSelectionne = computed(() => {
+    const { data, error } =
+      await this.sb.client
+        .from('profiles')
+        .select('id, nom')
+        .eq('role', 'etudiant')
+        .order('nom');
 
-    const id =
-      Number(this.filtreEtudiant());
+    if (error) {
 
-    return this.etudiants().find(
-      e => e.id === id
-    );
+      console.error(
+        '❌ ETUDIANTS:',
+        error
+      );
 
-  });
-
-
-  /* ═══════════════════════════════════════════
-     PAIEMENTS DE L'ETUDIANT
-  ═══════════════════════════════════════════ */
-
-  paiementsEtudiant = computed(() => {
-
-    const id =
-      Number(this.filtreEtudiant());
-
-    if (!id) {
-
-      return [];
+      this.etudiants.set([]);
+      return;
 
     }
 
-    return this.paiements().filter(p =>
-
-      p.etudiant_id === id &&
-      p.annee === this.annee()
-
+    this.etudiants.set(
+      (data || []).map((e: any) => ({
+        id: String(e.id),
+        nom: e.nom || ''
+      }))
     );
-
-  });
-
-
-  /* ═══════════════════════════════════════════
-     NOMBRE MOIS PAYES
-  ═══════════════════════════════════════════ */
-
-  nombreMoisPayes = computed(() => {
-
-    return this.paiementsEtudiant()
-      .filter(p => p.paye)
-      .length;
-
-  });
-
-
-  /* ═══════════════════════════════════════════
-     NOMBRE MOIS NON PAYES
-  ═══════════════════════════════════════════ */
-
-  nombreMoisNonPayes = computed(() => {
-
-    return 12 - this.nombreMoisPayes();
-
-  });
-
-
-  /* ═══════════════════════════════════════════
-     TOTAL PAYE
-  ═══════════════════════════════════════════ */
-
-  totalPaye = computed(() => {
-
-    return this.paiementsEtudiant()
-      .filter(p => p.paye)
-      .reduce(
-        (total, p) =>
-          total + p.montant,
-        0
-      );
-
-  });
-
-
-  /* ═══════════════════════════════════════════
-     TOTAL RESTANT
-  ═══════════════════════════════════════════ */
-
-  totalRestant = computed(() => {
-
-    return (
-      this.nombreMoisNonPayes() *
-      this.montantMensuel()
-    );
-
-  });
-
-
-  /* ═══════════════════════════════════════════
-     IS MONTH PAID
-  ═══════════════════════════════════════════ */
-
-  estPaye(mois: number): boolean {
-
-    const paiement =
-      this.paiementsEtudiant().find(
-        p =>
-          p.mois === mois &&
-          p.annee === this.annee()
-      );
-
-    return paiement?.paye ?? false;
 
   }
 
+  /* ==============================
+     LOAD PROGRAMMES ETUDIANT
+  ============================== */
 
-  /* ═══════════════════════════════════════════
-     GET PAYMENT
-  ═══════════════════════════════════════════ */
+  async loadProgrammesEtudiant(
+  etudiantId: string
+) {
+
+  if (!etudiantId) {
+    this.programmesEtudiant.set([]);
+    return;
+  }
+
+  console.log(
+    '🔎 Recherche programmes pour étudiant:',
+    etudiantId
+  );
+
+  const { data, error } =
+    await this.sb.client
+      .from('groupe_etudiants')
+      .select(`
+        groupe_id,
+        groupes (
+          id,
+          nom,
+          programme_id,
+          programmes (
+            id,
+            nom
+          )
+        )
+      `)
+      .eq('etudiant_id', etudiantId);
+
+  if (error) {
+
+    console.error(
+      '❌ PROGRAMMES ETUDIANT:',
+      error
+    );
+
+    this.programmesEtudiant.set([]);
+    return;
+  }
+
+  console.log(
+    '📚 GROUPES ETUDIANT RAW:',
+    data
+  );
+
+  const programmesMap =
+    new Map<string, Programme>();
+
+  for (const row of data || []) {
+
+    const groupe: any =
+      row.groupes;
+
+    console.log(
+      '👥 GROUPE:',
+      groupe
+    );
+
+    if (!groupe) {
+      continue;
+    }
+
+    const programme: any =
+      groupe.programmes;
+
+    console.log(
+      '📚 PROGRAMME:',
+      programme
+    );
+
+    if (!programme) {
+      continue;
+    }
+
+    const programmeId =
+      String(programme.id);
+
+    const programmeNom =
+      String(programme.nom || '');
+
+    programmesMap.set(
+      programmeId,
+      {
+        id: programmeId,
+        nom: programmeNom,
+        montant:
+          this.programmePrix[programmeNom] ?? 0
+      }
+    );
+  }
+
+  const programmes =
+    Array.from(
+      programmesMap.values()
+    );
+
+  console.log(
+    '✅ PROGRAMMES ETUDIANT FINAL:',
+    programmes
+  );
+
+  this.programmesEtudiant.set(
+    programmes
+  );
+
+  /*
+   * إذا عندو غير programme واحد
+   * نختاروه أوتوماتيكياً
+   */
+
+  if (programmes.length === 1) {
+
+    this.programmeSelectionne.set(
+      programmes[0].id
+    );
+
+  } else {
+
+    this.programmeSelectionne.set('');
+
+  }
+}
+
+  /* ==============================
+     LOAD PAIEMENTS
+  ============================== */
+
+  async loadPaiements() {
+
+    const { data, error } =
+      await this.sb.client
+        .from('paiements')
+        .select('*')
+        .order('annee', {
+          ascending: false
+        })
+        .order('mois', {
+          ascending: false
+        });
+
+    if (error) {
+
+      console.error(
+        '❌ PAIEMENTS:',
+        error
+      );
+
+      this.paiements.set([]);
+      return;
+
+    }
+
+    this.paiements.set(
+      (data || []).map((p: any) => ({
+        id: String(p.id),
+        etudiant_id:
+          String(p.etudiant_id),
+        programme_id:
+          String(p.programme_id),
+        mois: Number(p.mois),
+        annee: Number(p.annee),
+        montant: Number(p.montant || 0),
+        paye: Boolean(p.paye),
+        date_paiement:
+          p.date_paiement || undefined
+      }))
+    );
+
+  }
+
+  /* ==============================
+     CHANGER ETUDIANT
+  ============================== */
+
+  async changerEtudiant(
+    value: string
+  ) {
+
+    this.filtreEtudiant.set(value);
+
+    this.programmeSelectionne.set('');
+
+    this.programmesEtudiant.set([]);
+
+    if (!value) {
+      return;
+    }
+
+    await this.loadProgrammesEtudiant(
+      value
+    );
+
+  }
+
+  /* ==============================
+     ETUDIANT SELECTIONNE
+  ============================== */
+
+  etudiantSelectionne =
+    computed(() => {
+
+      const id =
+        this.filtreEtudiant();
+
+      return this.etudiants().find(
+        e => e.id === id
+      );
+
+    });
+
+  /* ==============================
+     PROGRAMME SELECTIONNE
+  ============================== */
+
+  programmeActuel =
+    computed(() => {
+
+      const id =
+        this.programmeSelectionne();
+
+      return this.programmesEtudiant()
+        .find(p => p.id === id);
+
+    });
+
+  /* ==============================
+     PAIEMENTS FILTRES
+  ============================== */
+
+  paiementsEtudiant =
+    computed(() => {
+
+      const etudiantId =
+        this.filtreEtudiant();
+
+      const programmeId =
+        this.programmeSelectionne();
+
+      const annee =
+        this.annee();
+
+      if (
+        !etudiantId ||
+        !programmeId
+      ) {
+
+        return [];
+
+      }
+
+      return this.paiements().filter(
+        p =>
+          p.etudiant_id === etudiantId &&
+          p.programme_id === programmeId &&
+          p.annee === annee
+      );
+
+    });
+
+  /* ==============================
+     MOIS PAYES
+  ============================== */
+
+  nombreMoisPayes =
+    computed(() => {
+
+      return this.paiementsEtudiant()
+        .filter(p => p.paye)
+        .length;
+
+    });
+
+  /* ==============================
+     MOIS NON PAYES
+  ============================== */
+
+  nombreMoisNonPayes =
+    computed(() => {
+
+      return 12 -
+        this.nombreMoisPayes();
+
+    });
+
+  /* ==============================
+     TOTAL PAYE
+  ============================== */
+
+  totalPaye =
+    computed(() => {
+
+      return this.paiementsEtudiant()
+        .filter(p => p.paye)
+        .reduce(
+          (total, p) =>
+            total + p.montant,
+          0
+        );
+
+    });
+
+  /* ==============================
+     TOTAL RESTANT
+  ============================== */
+
+  totalRestant =
+    computed(() => {
+
+      const montant =
+        this.programmeActuel()
+          ?.montant ?? 0;
+
+      return (
+        this.nombreMoisNonPayes() *
+        montant
+      );
+
+    });
+
+  /* ==============================
+     EST PAYE
+  ============================== */
+
+  estPaye(
+    mois: number
+  ): boolean {
+
+    return !!this.paiementsEtudiant()
+      .find(
+        p =>
+          p.mois === mois &&
+          p.paye
+      );
+
+  }
+
+  /* ==============================
+     GET PAIEMENT
+  ============================== */
 
   getPaiement(
     mois: number
@@ -372,132 +539,148 @@ export class PaiementsComponent implements OnInit {
     return this.paiementsEtudiant()
       .find(
         p =>
-          p.mois === mois &&
-          p.annee === this.annee()
+          p.mois === mois
       );
 
   }
 
+  /* ==============================
+     TOGGLE PAIEMENT
+  ============================== */
 
-  /* ═══════════════════════════════════════════
-     TOGGLE PAYMENT
-  ═══════════════════════════════════════════ */
-
-  togglePaiement(
+  async togglePaiement(
     mois: number
-  ): void {
+  ) {
 
-    const studentId =
-      Number(this.filtreEtudiant());
+    const etudiantId =
+      this.filtreEtudiant();
 
-    if (!studentId) {
+    const programmeId =
+      this.programmeSelectionne();
+
+    if (
+      !etudiantId ||
+      !programmeId
+    ) {
+
+      alert(
+        'اختر الطالب والبرنامج أولاً'
+      );
 
       return;
 
     }
-
 
     const existing =
       this.getPaiement(mois);
 
+    this.saving.set(true);
 
-    /* ═══════════════════════════════
-       EXISTING PAYMENT
-    ═══════════════════════════════ */
+    try {
 
-    if (existing) {
+      /* ==========================
+         UPDATE
+      ========================== */
 
-      this.paiements.update(list =>
+      if (existing) {
 
-        list.map(p => {
+        const nouveauStatut =
+          !existing.paye;
 
-          if (p.id !== existing.id) {
-
-            return p;
-
-          }
-
-
-          return {
-
-            ...p,
-
-            paye: !p.paye,
-
-            date_paiement:
-              !p.paye
-                ? new Date()
+        const { error } =
+          await this.sb.client
+            .from('paiements')
+            .update({
+              paye: nouveauStatut,
+              date_paiement:
+                nouveauStatut
+                  ? new Date()
                     .toISOString()
                     .split('T')[0]
-                : undefined
+                  : null
+            })
+            .eq('id', existing.id);
 
-          };
+        if (error) {
 
-        })
+          console.error(
+            '❌ UPDATE PAIEMENT:',
+            error
+          );
 
-      );
+          alert(error.message);
+          return;
 
-      return;
-
-    }
-
-
-    /* ═══════════════════════════════
-       NEW PAYMENT
-    ═══════════════════════════════ */
-
-    const newId =
-
-      this.paiements().length > 0
-
-        ? Math.max(
-            ...this.paiements()
-              .map(p => p.id)
-          ) + 1
-
-        : 1;
-
-
-    this.paiements.update(list => [
-
-      ...list,
-
-      {
-
-        id: newId,
-
-        etudiant_id:
-          studentId,
-
-        mois,
-
-        annee:
-          this.annee(),
-
-        montant:
-          this.montantMensuel(),
-
-        paye: true,
-
-        date_paiement:
-          new Date()
-            .toISOString()
-            .split('T')[0]
+        }
 
       }
 
-    ]);
+      /* ==========================
+         INSERT
+      ========================== */
+
+      else {
+
+        const montant =
+          this.programmeActuel()
+            ?.montant ?? 0;
+
+        const { error } =
+          await this.sb.client
+            .from('paiements')
+            .insert({
+              etudiant_id:
+                etudiantId,
+
+              programme_id:
+                programmeId,
+
+              mois,
+
+              annee:
+                this.annee(),
+
+              montant,
+
+              paye: true,
+
+              date_paiement:
+                new Date()
+                  .toISOString()
+                  .split('T')[0]
+            });
+
+        if (error) {
+
+          console.error(
+            '❌ INSERT PAIEMENT:',
+            error
+          );
+
+          alert(error.message);
+          return;
+
+        }
+
+      }
+
+      await this.loadPaiements();
+
+    } finally {
+
+      this.saving.set(false);
+
+    }
 
   }
 
-
-  /* ═══════════════════════════════════════════
-     SET YEAR
-  ═══════════════════════════════════════════ */
+  /* ==============================
+     CHANGER ANNEE
+  ============================== */
 
   changerAnnee(
     value: string
-  ): void {
+  ) {
 
     this.annee.set(
       Number(value)
@@ -505,25 +688,9 @@ export class PaiementsComponent implements OnInit {
 
   }
 
-
-  /* ═══════════════════════════════════════════
-     SET MONTHLY PRICE
-  ═══════════════════════════════════════════ */
-
-  changerMontant(
-    value: string
-  ): void {
-
-    this.montantMensuel.set(
-      Number(value) || 0
-    );
-
-  }
-
-
-  /* ═══════════════════════════════════════════
+  /* ==============================
      FORMAT MONEY
-  ═══════════════════════════════════════════ */
+  ============================== */
 
   formatMoney(
     amount: number
