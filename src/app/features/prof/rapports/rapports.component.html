@@ -1,283 +1,977 @@
-<div class="page-wrap" dir="rtl">
+<div class="app-layout" dir="rtl">
 
+  <!-- SIDEBAR -->
+  <aside class="sidebar-area">
     <app-sidebar activePage="rapports"></app-sidebar>
+  </aside>
 
-  <!-- PAGE HEADER -->
-  <div class="page-header">
-    <div>
-      <div class="page-title">📊 التقارير والإحصائيات</div>
-      <div class="page-sub">بيانات حية من قاعدة البيانات</div>
-    </div>
-    <button class="btn-ghost" (click)="loadRapports()">🔄 تحديث</button>
-  </div>
 
-  @if (loading()) {
-    <div class="loading-wrap">
-      <div class="spinner"></div>
-      <p>جاري تحميل البيانات...</p>
-    </div>
-  } @else {
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
 
-  <!-- ══ KPI STATS ═══════════════════════════════ -->
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-icon">👥</div>
-      <div class="kpi-val">{{ totalEtudiants() }}</div>
-      <div class="kpi-label">إجمالي الطلاب</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📖</div>
-      <div class="kpi-val">{{ souratesMktmla() }}</div>
-      <div class="kpi-label">سور مكتملة</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">📝</div>
-      <div class="kpi-val">{{ totalAyat() }}</div>
-      <div class="kpi-label">آيات محفوظة</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">✅</div>
-      <div class="kpi-val">{{ moyennePresence() }}%</div>
-      <div class="kpi-label">معدل الحضور</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">⭐</div>
-      <div class="kpi-val">{{ moyenneEval() }}/20</div>
-      <div class="kpi-label">معدل التقييمات</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-icon">🗂️</div>
-      <div class="kpi-val">{{ totalGroupes() }}</div>
-      <div class="kpi-label">المجموعات</div>
-    </div>
-  </div>
+    <!-- HEADER -->
+    <header class="page-header">
 
-  <!-- ══ DEUX COLONNES ══════════════════════════ -->
-  <div class="two-col">
-
-    <!-- TOP ÉTUDIANTS -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏆 أفضل الطلاب</div>
-        <span style="font-size:11px;color:#888">حسب تقدم الحفظ والحضور والتقييم</span>
+      <div>
+        <h1>📊 التقارير والإحصائيات</h1>
+        <p>
+          متابعة شاملة لأداء الطلاب والحفظ والحضور والتقييمات
+        </p>
       </div>
 
-      @if (topEtudiants().length === 0) {
-        <div class="empty-state">لا توجد بيانات بعد</div>
-      } @else {
-        <div class="top-list">
-          @for (e of topEtudiants(); track e.id; let i = $index) {
-            <div class="top-row" [class.top-podium]="i < 3">
-              <div class="top-medal">{{ getMedal(i) }}</div>
-              <div class="top-avatar">{{ e.nom?.charAt(0) }}</div>
-              <div class="top-info">
-                <div class="top-nom">{{ e.nom }}</div>
-                <div class="top-meta">
-                  {{ e.groupes?.nom }} ·
-                  {{ e.nb_mktmla }} سورة ·
-                  {{ e.taux_presence }}% حضور
-                </div>
-              </div>
-              <div class="top-score">
-                <div class="score-bar-bg">
-                  <div class="score-bar-fill"
-                    [style.width]="getBarWidth(e.score, topEtudiants()[0]?.score) + '%'">
-                  </div>
-                </div>
-                <span class="score-val">{{ e.score }}</span>
-              </div>
-            </div>
-          }
-        </div>
-      }
+      <button
+        class="btn-refresh"
+        (click)="refresh()"
+      >
+        🔄 تحديث
+      </button>
+
+    </header>
+
+
+    <!-- REPORT NAVIGATION -->
+    <div class="report-tabs">
+
+      <button
+        class="report-tab"
+        [class.active]="activeReport() === 'general'"
+        (click)="switchReport('general')"
+      >
+        📊 التقرير العام
+      </button>
+
+      <button
+        class="report-tab"
+        [class.active]="activeReport() === 'etudiant'"
+        (click)="switchReport('etudiant')"
+      >
+        👤 تقرير طالب
+      </button>
+
     </div>
 
-    <!-- RÉPARTITION GROUPES -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🗂️ توزيع الطلاب حسب المجموعة</div>
+
+    @if (loading()) {
+
+      <div class="loading-box">
+        <div class="spinner"></div>
+        <p>جاري تحميل التقرير...</p>
       </div>
 
-      @if (repartitionGroupes().length === 0) {
-        <div class="empty-state">لا توجد مجموعات</div>
-      } @else {
-        <div class="groupes-chart">
-          @for (g of repartitionGroupes(); track g.id) {
-            <div class="gc-row">
-              <div class="gc-label">
-                <span class="gc-type-dot"
-                  [style.background]="getGroupeColor(g.type)">
-                </span>
-                {{ g.nom }}
-              </div>
-              <div class="gc-bar-wrap">
-                <div class="gc-bar-bg">
-                  <div class="gc-bar-fill"
-                    [style.width]="getBarWidth(g.nb_etudiants, totalEtudiants()) + '%'"
-                    [style.background]="getGroupeColor(g.type)">
-                  </div>
-                </div>
-                <span class="gc-count">{{ g.nb_etudiants }} طالب</span>
-              </div>
-            </div>
-          }
-        </div>
-
-        <!-- Donut simple -->
-        <div class="donut-wrap">
-          @for (g of repartitionGroupes(); track g.id) {
-            <div class="donut-leg">
-              <div class="donut-dot" [style.background]="getGroupeColor(g.type)"></div>
-              <span>{{ g.nom }}</span>
-              <strong>
-                {{ getBarWidth(g.nb_etudiants, totalEtudiants()) }}%
-              </strong>
-            </div>
-          }
-        </div>
-      }
-    </div>
-
-  </div>
-
-  <!-- ══ PRÉSENCE PAR SEMAINE ════════════════════ -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">📅 معدل الحضور الأسبوعي</div>
-      <span style="font-size:11px;color:#888">آخر ٦ أسابيع</span>
-    </div>
-
-    @if (presenceParSemaine().length === 0) {
-      <div class="empty-state">لا توجد بيانات حضور بعد</div>
     } @else {
-      <div class="bar-chart">
-        @for (s of presenceParSemaine(); track s.label) {
-          <div class="bc-col">
-            <div class="bc-bars">
-              <div class="bc-bar-wrap">
-                <div class="bc-bar bc-bar-green"
-                  [style.height]="getBarWidth(s.present, s.total) + '%'"
-                  [title]="'حاضر: ' + s.present">
-                </div>
-              </div>
-              <div class="bc-bar-wrap">
-                <div class="bc-bar bc-bar-red"
-                  [style.height]="getBarWidth(s.absent, s.total) + '%'"
-                  [title]="'غائب: ' + s.absent">
-                </div>
-              </div>
+
+
+      <!-- =====================================================
+           GENERAL REPORT
+      ====================================================== -->
+
+      @if (activeReport() === 'general') {
+
+        <!-- KPIs -->
+
+        <section class="kpi-grid">
+
+          <div class="kpi-card blue">
+            <div class="kpi-icon">👨‍🎓</div>
+            <div class="kpi-value">
+              {{ totalEtudiants() }}
             </div>
-            <div class="bc-pct">
-              {{ s.total > 0 ? getBarWidth(s.present, s.total) : 0 }}%
+            <div class="kpi-label">
+              إجمالي الطلاب
             </div>
-            <div class="bc-label">{{ s.label }}</div>
           </div>
-        }
-      </div>
-      <div class="chart-legend">
-        <div class="cl-item">
-          <div class="cl-dot" style="background:#1D9E75"></div> حاضر
-        </div>
-        <div class="cl-item">
-          <div class="cl-dot" style="background:#D85A30"></div> غائب
-        </div>
-      </div>
-    }
-  </div>
 
-  <!-- ══ PROGRESSION SOURATES ════════════════════ -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">📖 تقدم حفظ السور</div>
-      <span style="font-size:11px;color:#888">السور التي بدأ بها الطلاب</span>
-    </div>
 
-    @if (progressionSourates().length === 0) {
-      <div class="empty-state">لم يبدأ أي طالب بعد</div>
-    } @else {
-      <div class="sourates-chart">
-        @for (s of progressionSourates(); track s.id) {
-          <div class="sc-row">
-            <div class="sc-label">
-              <span class="sc-arabic">{{ s.nom_arabe }}</span>
-              <span class="sc-nom">{{ s.nom }}</span>
+          <div class="kpi-card purple">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-value">
+              {{ totalGroupes() }}
             </div>
-            <div class="sc-bars">
-              <div class="sc-bar-bg">
-                <div class="sc-bar-fill sc-mktmla"
-                  [style.width]="s.pct_mktmla + '%'"
-                  [title]="'مكتملة: ' + s.nb_mktmla">
-                </div>
+            <div class="kpi-label">
+              المجموعات
+            </div>
+          </div>
+
+
+          <div class="kpi-card orange">
+            <div class="kpi-icon">📚</div>
+            <div class="kpi-value">
+              {{ totalProgrammes() }}
+            </div>
+            <div class="kpi-label">
+              البرامج
+            </div>
+          </div>
+
+
+          <div class="kpi-card green">
+            <div class="kpi-icon">📖</div>
+            <div class="kpi-value">
+              {{ totalSouratesCompletees() }}
+            </div>
+            <div class="kpi-label">
+              السور المكتملة
+            </div>
+          </div>
+
+
+          <div class="kpi-card teal">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-value">
+              {{ tauxPresence() }}%
+            </div>
+            <div class="kpi-label">
+              معدل الحضور
+            </div>
+          </div>
+
+
+          <div class="kpi-card yellow">
+            <div class="kpi-icon">⭐</div>
+            <div class="kpi-value">
+              {{ moyenneEvaluation() }}/20
+            </div>
+            <div class="kpi-label">
+              متوسط التقييمات
+            </div>
+          </div>
+
+        </section>
+
+
+        <!-- FIRST ROW -->
+
+        <section class="charts-grid">
+
+          <!-- GROUPES -->
+
+          <div class="card">
+
+            <div class="card-header">
+              <div>
+                <h2>👥 توزيع الطلاب حسب المجموعات</h2>
+                <p>عدد الطلاب المسجلين في كل مجموعة</p>
               </div>
-              <div class="sc-info">
-                <span class="badge badge-green">{{ s.nb_mktmla }} مكتملة</span>
-                @if (s.nb_jariya > 0) {
-                  <span class="badge badge-blue">{{ s.nb_jariya }} جارية</span>
+            </div>
+
+            @if (repartitionGroupes().length === 0) {
+
+              <div class="empty">
+                لا توجد بيانات للمجموعات
+              </div>
+
+            } @else {
+
+              <div class="horizontal-chart">
+
+                @for (
+                  g of repartitionGroupes();
+                  track g.id
+                ) {
+
+                  <div class="chart-row">
+
+                    <div class="chart-label">
+                      <span
+                        class="dot"
+                        [style.background]="getGroupeColor(g.type)"
+                      ></span>
+
+                      {{ g.nom }}
+                    </div>
+
+                    <div class="chart-track">
+
+                      <div
+                        class="chart-fill"
+                        [style.width]="
+                          getBarWidth(
+                            g.nbEtudiants,
+                            totalEtudiants()
+                          ) + '%'
+                        "
+                        [style.background]="
+                          getGroupeColor(g.type)
+                        "
+                      ></div>
+
+                    </div>
+
+                    <strong>
+                      {{ g.nbEtudiants }}
+                    </strong>
+
+                  </div>
+
                 }
+
               </div>
-            </div>
+
+            }
+
           </div>
-        }
-      </div>
-    }
-  </div>
 
-  <!-- ══ DERNIÈRES ÉVALUATIONS ══════════════════ -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">⭐ آخر التقييمات</div>
-    </div>
 
-    @if (dernieresEvals().length === 0) {
-      <div class="empty-state">لا توجد تقييمات بعد</div>
-    } @else {
-      <table class="table">
-        <thead>
-          <tr>
-            <th>الطالب</th>
-            <th>السورة</th>
-            <th>النوع</th>
-            <th>الدرجة</th>
-            <th>التقدير</th>
-            <th>التاريخ</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (ev of dernieresEvals(); track ev.id) {
-            <tr>
-              <td>
-                <div class="stu-cell">
-                  <div class="stu-av">{{ ev.profiles?.nom?.charAt(0) }}</div>
-                  {{ ev.profiles?.nom }}
+          <!-- PRESENCE -->
+
+          <div class="card">
+
+            <div class="card-header">
+
+              <div>
+                <h2>📅 الحضور</h2>
+                <p>آخر 6 أشهر حسب سجلات الحضور</p>
+              </div>
+
+              <div class="big-percent">
+                {{ tauxPresence() }}%
+              </div>
+
+            </div>
+
+
+            @if (presenceStats().length === 0) {
+
+              <div class="empty">
+                لا توجد بيانات حضور
+              </div>
+
+            } @else {
+
+              <div class="bar-chart">
+
+                @for (
+                  p of presenceStats();
+                  track p.label
+                ) {
+
+                  <div class="bar-column">
+
+                    <div class="bar-value">
+                      {{
+                        getBarWidth(
+                          p.present,
+                          p.total
+                        )
+                      }}%
+                    </div>
+
+                    <div class="bar-container">
+
+                      <div
+                        class="bar present"
+                        [style.height]="
+                          getBarWidth(
+                            p.present,
+                            p.total
+                          ) + '%'
+                        "
+                      ></div>
+
+                      <div
+                        class="bar absent"
+                        [style.height]="
+                          getBarWidth(
+                            p.absent,
+                            p.total
+                          ) + '%'
+                        "
+                      ></div>
+
+                    </div>
+
+                    <span>
+                      {{ p.label }}
+                    </span>
+
+                  </div>
+
+                }
+
+              </div>
+
+
+              <div class="legend">
+
+                <span>
+                  <i class="green-dot"></i>
+                  حاضر
+                </span>
+
+                <span>
+                  <i class="red-dot"></i>
+                  غائب
+                </span>
+
+              </div>
+
+            }
+
+          </div>
+
+        </section>
+
+
+        <!-- HIFD -->
+
+        <section class="card">
+
+          <div class="card-header">
+
+            <div>
+              <h2>📖 تقدم حفظ السور</h2>
+              <p>
+                السور التي بدأ الطلاب في حفظها
+              </p>
+            </div>
+
+          </div>
+
+
+          @if (progressionSourates().length === 0) {
+
+            <div class="empty">
+              لا توجد بيانات حفظ بعد
+            </div>
+
+          } @else {
+
+            <div class="sourates-list">
+
+              @for (
+                s of progressionSourates();
+                track s.id
+              ) {
+
+                <div class="sourate-row">
+
+                  <div class="sourate-name">
+
+                    <strong>
+                      {{ s.nom_arabe || s.nom }}
+                    </strong>
+
+                    <small>
+                      {{ s.nom }}
+                    </small>
+
+                  </div>
+
+
+                  <div class="sourate-progress">
+
+                    <div class="progress-track">
+
+                      <div
+                        class="progress-complete"
+                        [style.width]="
+                          getBarWidth(
+                            s.completees,
+                            s.total
+                          ) + '%'
+                        "
+                      ></div>
+
+                    </div>
+
+                    <div class="progress-info">
+
+                      <span class="complete">
+                        {{ s.completees }}
+                        مكتملة
+                      </span>
+
+                      @if (s.enCours > 0) {
+
+                        <span class="running">
+                          {{ s.enCours }}
+                          جارية
+                        </span>
+
+                      }
+
+                    </div>
+
+                  </div>
+
                 </div>
-              </td>
-              <td>{{ ev.sourates?.nom || '—' }}</td>
-              <td><span class="badge badge-blue">{{ ev.type }}</span></td>
-              <td>
-                <span class="note-badge"
-                  [class]="getNoteClass(ev.note, ev.note_max)">
-                  {{ ev.note }}/{{ ev.note_max }}
-                </span>
-              </td>
-              <td>
-                <span class="badge"
-                  [class.badge-green]="ev.note/ev.note_max >= 0.75"
-                  [class.badge-amber]="ev.note/ev.note_max >= 0.5 && ev.note/ev.note_max < 0.75"
-                  [class.badge-red]="ev.note/ev.note_max < 0.5">
-                  {{ ev.note/ev.note_max >= 0.85 ? 'ممتاز' :
-                     ev.note/ev.note_max >= 0.75 ? 'جيد جداً' :
-                     ev.note/ev.note_max >= 0.65 ? 'جيد' :
-                     ev.note/ev.note_max >= 0.5  ? 'مقبول' : 'ضعيف' }}
-                </span>
-              </td>
-              <td style="font-size:12px;color:#888">{{ ev.date }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    }
-  </div>
 
-  } <!-- end @else loading -->
+              }
+
+            </div>
+
+          }
+
+        </section>
+
+
+        <!-- EVALUATIONS -->
+
+        <section class="card">
+
+          <div class="card-header">
+
+            <div>
+              <h2>⭐ التقييمات</h2>
+              <p>
+                متوسط التقييم حسب نوع التقييم
+              </p>
+            </div>
+
+            <strong class="average-number">
+              {{ moyenneEvaluation() }}/20
+            </strong>
+
+          </div>
+
+
+          @if (evaluationStats().length === 0) {
+
+            <div class="empty">
+              لا توجد تقييمات
+            </div>
+
+          } @else {
+
+            <div class="evaluation-grid">
+
+              @for (
+                e of evaluationStats();
+                track e.label
+              ) {
+
+                <div class="evaluation-item">
+
+                  <div class="evaluation-top">
+
+                    <span>
+                      {{ e.label }}
+                    </span>
+
+                    <strong>
+                      {{ e.moyenne }}/20
+                    </strong>
+
+                  </div>
+
+                  <div class="progress-track">
+
+                    <div
+                      class="evaluation-fill"
+                      [style.width]="
+                        (e.moyenne / 20 * 100) + '%'
+                      "
+                    ></div>
+
+                  </div>
+
+                  <small>
+                    {{ e.total }} تقييم
+                  </small>
+
+                </div>
+
+              }
+
+            </div>
+
+          }
+
+        </section>
+
+      }
+
+
+      <!-- =====================================================
+           STUDENT REPORT
+      ====================================================== -->
+
+      @if (activeReport() === 'etudiant') {
+
+        <!-- STUDENT SELECT -->
+
+        <section class="student-selector card">
+
+          <div>
+
+            <h2>👤 تقرير طالب</h2>
+
+            <p>
+              اختر الطالب لعرض تقريره الكامل
+            </p>
+
+          </div>
+
+
+          <select
+            [value]="selectedEtudiantId()"
+            (change)="selectEtudiant($any($event.target).value)"
+          >
+            <option value="">اختر الطالب</option>
+
+            @for (e of etudiants(); track e.id) {
+              <option [value]="e.id">
+                 {{ e.nom }}
+              </option>
+            }
+          </select>
+
+
+        </section>
+
+
+        @if (!studentInfo()) {
+
+          <div class="empty-large">
+
+            <div>👨‍🎓</div>
+
+            <h3>
+              اختر طالبًا
+            </h3>
+
+            <p>
+              سيظهر هنا التقرير الكامل للطالب
+            </p>
+
+          </div>
+
+        } @else {
+
+          <!-- STUDENT HEADER -->
+
+          <section class="student-profile card">
+
+            <div class="student-avatar">
+
+              {{
+                (
+                  studentInfo()?.nom ||
+                  '?'
+                ).charAt(0)
+              }}
+
+            </div>
+
+
+            <div class="student-main-info">
+
+              <h2>
+
+
+                {{ studentInfo()?.nom }}
+
+              </h2>
+
+              <span>
+                تاريخ التسجيل:
+                {{ formatDate(studentInfo()?.created_at) }}
+              </span>
+
+            </div>
+
+
+            <div class="student-kpis">
+
+              <div>
+                <strong>
+                  {{ studentGroupes().length }}
+                </strong>
+
+                <span>
+                  مجموعات
+                </span>
+              </div>
+
+
+              <div>
+                <strong>
+                  {{ getStudentHifdTotal() }}
+                </strong>
+
+                <span>
+                  سور
+                </span>
+              </div>
+
+
+              <div>
+                <strong>
+                  {{ getPresencePercent() }}%
+                </strong>
+
+                <span>
+                  حضور
+                </span>
+              </div>
+
+
+              <div>
+                <strong>
+                  {{ getStudentAverage() }}/20
+                </strong>
+
+                <span>
+                  التقييم
+                </span>
+              </div>
+
+            </div>
+
+          </section>
+
+
+          <!-- GROUPES -->
+
+          <section class="card">
+
+            <div class="card-header">
+
+              <div>
+                <h2>👥 مجموعات الطالب</h2>
+                <p>
+                  المجموعات التي ينتمي إليها الطالب
+                </p>
+              </div>
+
+            </div>
+
+
+            @if (studentGroupes().length === 0) {
+
+              <div class="empty">
+                الطالب غير مسجل في أي مجموعة
+              </div>
+
+            } @else {
+
+              <div class="student-groups">
+
+                @for (
+                  g of studentGroupes();
+                  track g.id
+                ) {
+
+                  <div class="group-chip">
+
+                    <span
+                      class="dot"
+                      [style.background]="
+                        getGroupeColor(g.type)
+                      "
+                    ></span>
+
+                    <div>
+
+                      <strong>
+                        {{ g.nom }}
+                      </strong>
+
+                      @if (g.type) {
+
+                        <small>
+                          {{ g.type }}
+                        </small>
+
+                      }
+
+                    </div>
+
+                  </div>
+
+                }
+
+              </div>
+
+            }
+
+          </section>
+
+
+          <!-- STUDENT CHARTS -->
+
+          <section class="charts-grid">
+
+            <!-- HIFD -->
+
+            <div class="card">
+
+              <div class="card-header">
+
+                <div>
+                  <h2>📖 تقدم الحفظ</h2>
+                  <p>
+                    حالة السور الخاصة بالطالب
+                  </p>
+                </div>
+
+              </div>
+
+
+              <div class="student-chart">
+
+                @for (
+                  s of studentHifdStats();
+                  track s.label
+                ) {
+
+                  <div class="stat-line">
+
+                    <div class="stat-line-top">
+
+                      <span>
+                        <i
+                          class="dot"
+                          [style.background]="s.color"
+                        ></i>
+
+                        {{ s.label }}
+                      </span>
+
+                      <strong>
+                        {{ s.value }}
+                      </strong>
+
+                    </div>
+
+                    <div class="progress-track">
+
+                      <div
+                        class="progress-generic"
+                        [style.width]="
+                          getBarWidth(
+                            s.value,
+                            getStudentHifdTotal()
+                          ) + '%'
+                        "
+                        [style.background]="s.color"
+                      ></div>
+
+                    </div>
+
+                  </div>
+
+                }
+
+              </div>
+
+
+              <div class="hifd-total">
+
+                مجموع السور:
+                <strong>
+                  {{ getStudentHifdTotal() }}
+                </strong>
+
+                · مكتملة:
+                <strong>
+                  {{ getStudentHifdCompletees() }}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <!-- PRESENCE -->
+
+            <div class="card">
+
+              <div class="card-header">
+
+                <div>
+                  <h2>📅 حضور الطالب</h2>
+                  <p>
+                    إحصائيات الحضور والغياب
+                  </p>
+                </div>
+
+                <strong class="big-percent">
+                  {{ getPresencePercent() }}%
+                </strong>
+
+              </div>
+
+
+              <div class="student-chart">
+
+                @for (
+                  s of studentPresenceStats();
+                  track s.label
+                ) {
+
+                  <div class="stat-line">
+
+                    <div class="stat-line-top">
+
+                      <span>
+                        <i
+                          class="dot"
+                          [style.background]="s.color"
+                        ></i>
+
+                        {{ s.label }}
+                      </span>
+
+                      <strong>
+                        {{ s.value }}
+                      </strong>
+
+                    </div>
+
+                    <div class="progress-track">
+
+                      <div
+                        class="progress-generic"
+                        [style.width]="
+                          getBarWidth(
+                            s.value,
+                            studentPresences().length
+                          ) + '%'
+                        "
+                        [style.background]="s.color"
+                      ></div>
+
+                    </div>
+
+                  </div>
+
+                }
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+          <!-- HIFD DETAILS -->
+
+          <section class="card">
+
+            <div class="card-header">
+
+              <div>
+                <h2>📚 تفاصيل الحفظ</h2>
+                <p>
+                  آخر السور المسجلة للطالب
+                </p>
+              </div>
+
+            </div>
+
+
+            @if (studentSuivis().length === 0) {
+
+              <div class="empty">
+                لا توجد بيانات حفظ
+              </div>
+
+            } @else {
+
+              <div class="table-wrapper">
+
+                <table>
+
+                  <thead>
+
+                    <tr>
+                      <th>السورة</th>
+                      <th>الآيات</th>
+                      <th>الحالة</th>
+                      <th>التقييم</th>
+                      <th>آخر تحديث</th>
+                    </tr>
+
+                  </thead>
+
+                  <tbody>
+
+                    @for (
+                      s of studentSuivis();
+                      track s.id
+                    ) {
+
+                      <tr>
+
+                        <td>
+
+                          <strong>
+                            {{
+                              s.sourates?.nom_arabe ||
+                              s.sourates?.nom ||
+                              '—'
+                            }}
+                          </strong>
+
+                        </td>
+
+
+                        <td>
+
+                          @if (
+                            s.ayat_debut &&
+                            s.ayat_fin
+                          ) {
+
+                            من
+                            {{ s.ayat_debut }}
+                            إلى
+                            {{ s.ayat_fin }}
+
+                          } @else {
+
+                            —
+
+                          }
+
+                        </td>
+
+
+                        <td>
+
+                          <span class="status-badge">
+
+                            {{ s.statut }}
+
+                          </span>
+
+                        </td>
+
+
+                        <td>
+
+                          {{ s.evaluation || '—' }}
+
+                        </td>
+
+
+                        <td>
+
+                          {{ formatDate(s.updated_at) }}
+
+                        </td>
+
+                      </tr>
+
+                    }
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+            }
+
+          </section>
+         
+        }
+
+      }
+
+    }
+
+  </main>
 
 </div>
