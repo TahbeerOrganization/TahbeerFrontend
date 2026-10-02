@@ -62,12 +62,6 @@ export const routes: Routes = [
             .then(m => m.RapportsComponent)
       },
       {
-        path: 'paiements',
-        loadComponent: () =>
-          import('./features/prof/payement/payement.component')
-            .then(m => m.PaiementsComponent)
-      },
-      {
         path: 'emploi',
         loadComponent: () =>
           import('./features/prof/emploi/emploi.component')
