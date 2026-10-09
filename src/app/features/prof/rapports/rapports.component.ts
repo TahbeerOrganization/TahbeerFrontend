@@ -25,108 +25,36 @@ export class RapportsComponent implements OnInit {
   /* =========================================================
      VIEW
   ========================================================= */
-
-  activeReport =
-    signal<'general' | 'etudiant'>('general');
-
-  loading =
-    signal(true);
-
-
-  /* =========================================================
-     GENERAL KPIs
-  ========================================================= */
-
-  totalEtudiants =
-    signal(0);
-
-  totalGroupes =
-    signal(0);
-
-  totalProgrammes =
-    signal(0);
-
-  totalSuivis =
-    signal(0);
-
-  totalSouratesCompletees =
-    signal(0);
-
-  totalPresences =
-    signal(0);
-
-  tauxPresence =
-    signal(0);
-
-  totalEvaluations =
-    signal(0);
-
-  moyenneEvaluation =
-    signal(0);
-
-
+  activeReport = signal<'general' | 'etudiant'>('general');
+  loading = signal(true);
   /* =========================================================
      GENERAL CHARTS
   ========================================================= */
 
-  progressionSourates =
-    signal<any[]>([]);
-
-  repartitionGroupes =
-    signal<any[]>([]);
-
-  presenceStats =
-    signal<any[]>([]);
-
-  evaluationStats =
-    signal<any[]>([]);
+  progressionSourates = signal<any[]>([]);
+  repartitionGroupes = signal<any[]>([]);
+  presenceStats = signal<any[]>([]);
+  evaluationStats = signal<any[]>([]);
 
 
   /* =========================================================
      STUDENTS
   ========================================================= */
-
-  etudiants =
-    signal<any[]>([]);
-
-  selectedEtudiantId =
-    signal<string>('');
-
-
+  etudiants = signal<any[]>([]);
+  selectedEtudiantId = signal<string>('');
   /* =========================================================
      STUDENT REPORT
   ========================================================= */
-
-  studentInfo =
-    signal<any>(null);
-
-  studentGroupes =
-    signal<any[]>([]);
-
-  studentSuivis =
-    signal<any[]>([]);
-
-  studentPresences =
-    signal<any[]>([]);
-
-  studentEvaluations =
-    signal<any[]>([]);
-
-
+  studentInfo = signal<any>(null);
+  studentGroupes = signal<any[]>([]);
+  studentSuivis = signal<any[]>([]);
+  studentPresences = signal<any[]>([]);
+  studentEvaluations = signal<any[]>([]);
   /* =========================================================
      STUDENT CHARTS
   ========================================================= */
-
-  studentPresenceStats =
-    signal<any[]>([]);
-
-  studentHifdStats =
-    signal<any[]>([]);
-
-  studentEvaluationStats =
-    signal<any[]>([]);
-
-
+  studentPresenceStats = signal<any[]>([]);
+  studentHifdStats = signal<any[]>([]);
   /* =========================================================
      CONSTRUCTOR
   ========================================================= */
@@ -182,17 +110,10 @@ export class RapportsComponent implements OnInit {
     try {
 
       await Promise.all([
-
-        this.loadGeneralKPIs(),
-
         this.loadProgressionSourates(),
-
         this.loadRepartitionGroupes(),
-
         this.loadPresenceStats(),
-
         this.loadEvaluationStats()
-
       ]);
 
     } catch (error) {
@@ -209,19 +130,13 @@ export class RapportsComponent implements OnInit {
     }
 
   }
-
-
   /* =========================================================
      GENERAL KPIs
   ========================================================= */
-
   async loadGeneralKPIs(): Promise<void> {
-
-
     /* =====================================================
        ETUDIANTS
     ===================================================== */
-
     const {
       count: studentsCount,
       error: studentsError
@@ -252,12 +167,6 @@ export class RapportsComponent implements OnInit {
 
     }
 
-
-    this.totalEtudiants.set(
-      studentsCount || 0
-    );
-
-
     /* =====================================================
        GROUPES
     ===================================================== */
@@ -286,13 +195,6 @@ export class RapportsComponent implements OnInit {
       );
 
     }
-
-
-    this.totalGroupes.set(
-      groupesCount || 0
-    );
-
-
     /* =====================================================
        PROGRAMMES
     ===================================================== */
@@ -321,13 +223,6 @@ export class RapportsComponent implements OnInit {
       );
 
     }
-
-
-    this.totalProgrammes.set(
-      programmesCount || 0
-    );
-
-
     /* =====================================================
        SUIVI SOURATES
     ===================================================== */
@@ -360,24 +255,6 @@ export class RapportsComponent implements OnInit {
 
     const allSuivis =
       suivis || [];
-
-
-    this.totalSuivis.set(
-      allSuivis.length
-    );
-
-
-    this.totalSouratesCompletees.set(
-
-      allSuivis.filter(
-        s =>
-          s.statut === 'مكتملة' ||
-          s.statut === 'مكتمل'
-      ).length
-
-    );
-
-
     /* =====================================================
        PRESENCES
     ===================================================== */
@@ -403,16 +280,7 @@ export class RapportsComponent implements OnInit {
       );
 
     }
-
-
-    const allPresences =
-      presences || [];
-
-
-    this.totalPresences.set(
-      allPresences.length
-    );
-
+    const allPresences = presences || [];
 
     if (
       allPresences.length > 0
@@ -424,25 +292,7 @@ export class RapportsComponent implements OnInit {
             p.statut === 'حاضر'
         ).length;
 
-
-      this.tauxPresence.set(
-
-        Math.round(
-
-          (
-            presents /
-            allPresences.length
-          ) * 100
-
-        )
-
-      );
-
-    } else {
-
-      this.tauxPresence.set(0);
-
-    }
+      }
 
 
     /* =====================================================
@@ -472,75 +322,7 @@ export class RapportsComponent implements OnInit {
     }
 
 
-    const allEvaluations =
-      evaluations || [];
-
-
-    this.totalEvaluations.set(
-      allEvaluations.length
-    );
-
-
-    if (
-      allEvaluations.length > 0
-    ) {
-
-      const total =
-        allEvaluations.reduce(
-
-          (
-            sum,
-            e
-          ) => {
-
-            const max =
-              Number(
-                e.note_max
-              ) || 20;
-
-
-            const note =
-              Number(
-                e.note
-              ) || 0;
-
-
-            return (
-              sum +
-              (
-                note /
-                max
-              ) * 20
-            );
-
-          },
-
-          0
-
-        );
-
-
-      this.moyenneEvaluation.set(
-
-        Math.round(
-
-          (
-            total /
-            allEvaluations.length
-          ) * 10
-
-        ) / 10
-
-      );
-
-    } else {
-
-      this.moyenneEvaluation.set(0);
-
-    }
-
   }
-
 
   /* =========================================================
      PROGRESSION SOURATES
@@ -1083,23 +865,13 @@ export class RapportsComponent implements OnInit {
   ========================================================= */
 
   clearStudentReport(): void {
-
     this.studentInfo.set(null);
-
     this.studentGroupes.set([]);
-
     this.studentSuivis.set([]);
-
     this.studentPresences.set([]);
-
     this.studentEvaluations.set([]);
-
     this.studentPresenceStats.set([]);
-
     this.studentHifdStats.set([]);
-
-    this.studentEvaluationStats.set([]);
-
   }
 
 
@@ -1462,9 +1234,6 @@ export class RapportsComponent implements OnInit {
       );
 
       this.studentEvaluations.set([]);
-
-      this.studentEvaluationStats.set([]);
-
       return;
 
     }
@@ -1657,12 +1426,6 @@ export class RapportsComponent implements OnInit {
 
           }
         );
-
-
-    this.studentEvaluationStats.set(
-      result
-    );
-
   }
 
 

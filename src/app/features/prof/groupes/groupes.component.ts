@@ -101,139 +101,40 @@ export class GroupesComponent implements OnInit {
   // CHARGER LES DONNÉES
   // =========================================================
 
-  async loadData(): Promise<void> {
+  
+  
+  
 
-    this.loading.set(true);
-    this.errorMsg.set('');
+async loadData(): Promise<void> {
+  this.loading.set(true);
+  this.errorMsg.set('');
 
-    try {
+  try {
+    const { data, error, status } = await this.sb.client
+      .from('programmes')
+      .select('id, nom')
+      .order('nom');
 
-      // =====================================================
-      // PROGRAMMES
-      // =====================================================
+    console.log('Supabase status:', status);
+    console.log('Supabase error:', error);
+    console.log('Programmes reçus:', data?.length ?? 0);
 
-      const {
-        data: programmes,
-        error: programmesError
-      } = await this.sb.client
-        .from('programmes')
-        .select('id, nom')
-        .order('nom');
-
-      if (programmesError) {
-        throw programmesError;
-      }
-
-      this.programmes.set(
-        (programmes || []) as Programme[]
-      );
-
-      // =====================================================
-      // GROUPES
-      // =====================================================
-
-      const {
-        data: groupes,
-        error: groupesError
-      } = await this.sb.client
-        .from('groupes')
-        .select('id, nom, programme_id, couleur')
-        .order('nom');
-
-      if (groupesError) {
-        throw groupesError;
-      }
-
-      // =====================================================
-      // RELATIONS GROUPE / ÉTUDIANT
-      // =====================================================
-
-      const {
-        data: relations,
-        error: relationsError
-      } = await this.sb.client
-        .from('groupe_etudiants')
-        .select('groupe_id, etudiant_id');
-
-      if (relationsError) {
-        throw relationsError;
-      }
-
-      // =====================================================
-      // COMPTER LES ÉTUDIANTS
-      // =====================================================
-
-      const compteurs = new Map<string, number>();
-
-      for (const relation of relations || []) {
-
-        const groupeId = relation.groupe_id;
-
-        compteurs.set(
-          groupeId,
-          (compteurs.get(groupeId) || 0) + 1
-        );
-      }
-
-      // =====================================================
-      // FORMAT GROUPES
-      // =====================================================
-
-      const groupesFormates: Groupe[] =
-        (groupes || []).map((g: any) => ({
-          id: g.id,
-          nom: g.nom,
-          couleur: g.couleur || '#3b82f6',
-          programme_id: g.programme_id,
-          etudiants: compteurs.get(g.id) || 0
-        }));
-
-      this.groupes.set(groupesFormates);
-
-      // =====================================================
-      // ÉTUDIANTS
-      // =====================================================
-
-      const {
-        data: etudiants,
-        error: etudiantsError
-      } = await this.sb.client
-        .from('profiles')
-        .select('id, nom')
-        .eq('role', 'etudiant')
-        .order('nom');
-
-      if (etudiantsError) {
-        throw etudiantsError;
-      }
-
-      this.etudiants.set(
-        (etudiants || []) as Etudiant[]
-      );
-
-      // =====================================================
-      // ACTUALISER
-      // =====================================================
-
-      this.actualiserGroupesProgramme();
-
-    } catch (error: any) {
-
-      console.error(
-        'Erreur loadData:',
-        error
-      );
-
-      this.errorMsg.set(
-        error?.message ||
-        'خطأ في تحميل البيانات'
-      );
-
-    } finally {
-
-      this.loading.set(false);
+    if (error) {
+      throw error;
     }
+
+    this.programmes.set(data ?? []);
+
+  } catch (err: any) {
+    console.error('Erreur chargement programmes:', err);
+
+    this.errorMsg.set(
+      err?.message || 'Erreur de chargement des programmes'
+    );
+  } finally {
+    this.loading.set(false);
   }
+}
 
   // =========================================================
   // PROGRAMME

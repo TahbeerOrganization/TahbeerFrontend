@@ -1,3 +1,4 @@
+
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -15,16 +16,20 @@ import { SidebarComponent } from '../sidebar/sidebar.component';
 })
 export class DashboardComponent implements OnInit {
 
+  // Statistiques
   totalEtudiants = signal(0);
+  totalGroupes = signal(0);
+  totalProgrammes = signal(0);
   presenceAujourdhui = signal(0);
-  souratesMktmla = signal(0);
-  devoirsEnAttente = signal(0);
 
+  // Données
   etudiants = signal<any[]>([]);
+  groupes = signal<any[]>([]);
+  programmes = signal<any[]>([]);
   presencesAujourdhui = signal<any[]>([]);
-  devoirsRecents = signal<any[]>([]);
   alertesGiaab = signal<any[]>([]);
 
+  // État
   loading = signal(true);
   errorMsg = signal('');
   activeMenu = signal('dashboard');
@@ -46,13 +51,14 @@ export class DashboardComponent implements OnInit {
     try {
       await Promise.all([
         this.loadEtudiants(),
+        this.loadGroupes(),
+        this.loadProgrammes(),
         this.loadPresences(),
-        this.loadSourates(),
-        this.loadDevoirs(),
         this.loadAbsences()
       ]);
     } catch (error: any) {
-      console.error('Dashboard:', error);
+      console.error('Erreur Dashboard:', error);
+
       this.errorMsg.set(
         error?.message || 'خطأ في تحميل لوحة التحكم'
       );
@@ -61,6 +67,7 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  // 1. Charger les étudiants
   async loadEtudiants(): Promise<void> {
     const { data, error } = await this.sb.client
       .from('profiles')
@@ -77,11 +84,49 @@ export class DashboardComponent implements OnInit {
 
     this.etudiants.set(liste);
     this.totalEtudiants.set(liste.length);
-
-    console.log('Étudiants:', liste);
-    console.log('Total étudiants:', liste.length);
   }
 
+  // 2. Charger les groupes
+  async loadGroupes(): Promise<void> {
+    const { data, error } = await this.sb.client
+      .from('groupes')
+      .select('*');
+
+    if (error) {
+      console.error('Erreur groupes:', error);
+      throw error;
+    }
+
+    const liste = data ?? [];
+
+    this.groupes.set(liste);
+    this.totalGroupes.set(liste.length);
+
+    console.log('Groupes:', liste);
+    console.log('Total groupes:', liste.length);
+  }
+
+  // 3. Charger les programmes
+  async loadProgrammes(): Promise<void> {
+    const { data, error } = await this.sb.client
+      .from('programmes')
+      .select('*');
+
+    if (error) {
+      console.error('Erreur programmes:', error);
+      throw error;
+    }
+
+    const liste = data ?? [];
+
+    this.programmes.set(liste);
+    this.totalProgrammes.set(liste.length);
+
+    console.log('Programmes:', liste);
+    console.log('Total programmes:', liste.length);
+  }
+
+  // 4. Charger les présences d'aujourd'hui
   async loadPresences(): Promise<void> {
     const today = new Date()
       .toISOString()
@@ -104,57 +149,11 @@ export class DashboardComponent implements OnInit {
     this.presencesAujourdhui.set(liste);
 
     this.presenceAujourdhui.set(
-      liste.filter(
-        (p: any) => p.statut === 'حاضر'
-      ).length
+      liste.filter((p: any) => p.statut === 'حاضر').length
     );
   }
 
-  async loadSourates(): Promise<void> {
-    const { data, error } = await this.sb.client
-      .from('suivi_sourates')
-      .select('id')
-      .eq('statut', 'مكتملة');
-
-    if (error) {
-      console.error('Erreur sourates:', error);
-      this.souratesMktmla.set(0);
-      return;
-    }
-
-    this.souratesMktmla.set(
-      data?.length ?? 0
-    );
-  }
-
-  async loadDevoirs(): Promise<void> {
-    const { data, error } = await this.sb.client
-      .from('soumissions')
-      .select(`
-        *,
-        devoirs(titre, deadline),
-        profiles(nom)
-      `)
-      .eq('statut', 'لم يسلّم');
-
-    if (error) {
-      console.error('Erreur devoirs:', error);
-      this.devoirsRecents.set([]);
-      this.devoirsEnAttente.set(0);
-      return;
-    }
-
-    const liste = data ?? [];
-
-    this.devoirsRecents.set(
-      liste.slice(0, 5)
-    );
-
-    this.devoirsEnAttente.set(
-      liste.length
-    );
-  }
-
+  // 5. Charger les alertes d'absence
   async loadAbsences(): Promise<void> {
     const { data, error } = await this.sb.client
       .from('presences')
@@ -174,7 +173,6 @@ export class DashboardComponent implements OnInit {
     const counts: Record<string, any> = {};
 
     (data ?? []).forEach((p: any) => {
-
       if (!p.etudiant_id) {
         return;
       }
@@ -191,18 +189,14 @@ export class DashboardComponent implements OnInit {
     });
 
     const alertes = Object.values(counts)
-      .filter(
-        (x: any) => x.count >= 2
-      )
-      .sort(
-        (a: any, b: any) =>
-          b.count - a.count
-      )
+      .filter((x: any) => x.count >= 2)
+      .sort((a: any, b: any) => b.count - a.count)
       .slice(0, 5);
 
     this.alertesGiaab.set(alertes);
   }
 
+  // Taux de présence
   getTauxPresence(): number {
     const total = this.totalEtudiants();
 
@@ -215,22 +209,8 @@ export class DashboardComponent implements OnInit {
     );
   }
 
-  getBadgeGroupe(type?: string): string {
-    switch (type) {
-      case 'رجال':
-        return 'badge-blue';
 
-      case 'نساء':
-        return 'badge-purple';
-
-      case 'أطفال':
-        return 'badge-green';
-
-      default:
-        return 'badge-gray';
-    }
-  }
-
+  // Badge du niveau
   getNiveauBadge(niveau?: string): string {
     switch (niveau) {
       case 'مبتدئ':
@@ -247,24 +227,24 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  // Navigation
   navigateTo(path: string): void {
     this.activeMenu.set(path);
     this.router.navigate(['/prof', path]);
   }
 
+  // Déconnexion
   async logout(): Promise<void> {
     await this.auth.logout();
   }
 
+  // Date d'aujourd'hui
   today(): string {
-    return new Date().toLocaleDateString(
-      'ar-MA',
-      {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }
-    );
+    return new Date().toLocaleDateString('ar-MA', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   }
 }

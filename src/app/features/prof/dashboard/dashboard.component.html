@@ -1,12 +1,12 @@
 <div class="layout" dir="rtl">
 
-  <!-- ══ SIDEBAR ══════════════════════════════════ -->
-    <app-sidebar activePage="etudiants"></app-sidebar>
+  <!-- SIDEBAR -->
+  <app-sidebar activePage="dashboard"></app-sidebar>
 
-  <!-- ══ MAIN CONTENT ══════════════════════════════ -->
+  <!-- MAIN CONTENT -->
   <main class="main">
 
-    <!-- Topbar -->
+    <!-- TOPBAR -->
     <div class="topbar">
       <div>
         <div class="topbar-title">لوحة التحكم</div>
@@ -15,14 +15,18 @@
           {{ today() }}
         </div>
       </div>
+
       <div class="topbar-actions">
-        <button class="btn-refresh" (click)="loadDashboard()">
+        <button
+          class="btn-refresh"
+          (click)="loadDashboard()"
+          [disabled]="loading()">
           🔄 تحديث
         </button>
       </div>
     </div>
 
-    <!-- Loading -->
+    <!-- LOADING -->
     @if (loading()) {
       <div class="loading-wrap">
         <div class="spinner-big"></div>
@@ -30,209 +34,293 @@
       </div>
     } @else {
 
-    <div class="content">
+      <div class="content">
 
-      <!-- ── KPI CARDS ───────────────────────────── -->
-      <div class="kpi-grid">
-        <div class="kpi-card kpi-green">
-          <div class="kpi-icon">👥</div>
-          <div class="kpi-val">{{ totalEtudiants() }}</div>
-          <div class="kpi-label">إجمالي الطلاب</div>
-        </div>
-        <div class="kpi-card kpi-blue">
-          <div class="kpi-icon">✅</div>
-          <div class="kpi-val">
-            {{ presenceAujourdhui() }}
-            <span class="kpi-sub">/{{ totalEtudiants() }}</span>
+        <!-- ERROR -->
+        @if (errorMsg()) {
+          <div class="alert alert-error">
+            ⚠️ {{ errorMsg() }}
+            <button (click)="loadDashboard()">إعادة المحاولة</button>
           </div>
-          <div class="kpi-label">حاضرون اليوم</div>
-          <div class="kpi-pct">{{ getTauxPresence() }}%</div>
-        </div>
-        <div class="kpi-card kpi-amber">
-          <div class="kpi-icon">📖</div>
-          <div class="kpi-val">{{ souratesMktmla() }}</div>
-          <div class="kpi-label">سور مكتملة</div>
-        </div>
-        <div class="kpi-card kpi-red">
-          <div class="kpi-icon">📝</div>
-          <div class="kpi-val">{{ devoirsEnAttente() }}</div>
-          <div class="kpi-label">واجبات لم تُسلَّم</div>
-        </div>
-      </div>
+        }
 
-      <!-- ── DEUX COLONNES ──────────────────────── -->
-      <div class="two-col">
+        <!-- STATISTIQUES -->
+        <div class="kpi-grid">
 
-        <!-- Tableau étudiants -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">👥 آخر الطلاب المضافين</div>
-            <a routerLink="/prof/etudiants" class="card-link">
-              عرض الكل ←
-            </a>
+          <div class="kpi-card kpi-green">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-val">{{ totalEtudiants() }}</div>
+            <div class="kpi-label">إجمالي الطلاب</div>
           </div>
 
-          @if (etudiants().length === 0) {
-            <div class="empty-state">
-              <p>لا يوجد طلاب بعد</p>
-              <a routerLink="/prof/etudiants" class="btn-primary">
-                + إضافة طالب
+          <div class="kpi-card kpi-blue">
+            <div class="kpi-icon">👨‍👩‍👧‍👦</div>
+            <div class="kpi-val">{{ totalGroupes() }}</div>
+            <div class="kpi-label">إجمالي المجموعات</div>
+          </div>
+
+          <div class="kpi-card kpi-amber">
+            <div class="kpi-icon">📚</div>
+            <div class="kpi-val">{{ totalProgrammes() }}</div>
+            <div class="kpi-label">إجمالي البرامج</div>
+          </div>
+
+          <div class="kpi-card kpi-red">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-val">
+              {{ presenceAujourdhui() }}
+              <span class="kpi-sub">/{{ totalEtudiants() }}</span>
+            </div>
+            <div class="kpi-label">حاضرون اليوم</div>
+            <div class="kpi-pct">{{ getTauxPresence() }}%</div>
+          </div>
+
+        </div>
+
+        <!-- TWO COLUMNS -->
+        <div class="two-col">
+
+          <!-- DERNIERS ÉTUDIANTS -->
+          <div class="card">
+
+            <div class="card-header">
+              <div class="card-title">👥 آخر الطلاب المضافين</div>
+
+              <a routerLink="/prof/etudiants" class="card-link">
+                عرض الكل ←
               </a>
             </div>
-          } @else {
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>الاسم</th>
-                  <th>المجموعة</th>
-                  <th>المستوى</th>
-                  <th>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (etudiant of etudiants().slice(0, 6); track etudiant.id) {
-                  <tr>
-                    <td>
-                      <div class="stu-cell">
-                        <div class="stu-avatar">
-                          {{ etudiant.nom?.charAt(0) }}
-                        </div>
-                        <div>
-                          <div class="stu-name">{{ etudiant.nom }}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span class="badge"
-                        [class]="getBadgeGroupe(etudiant.groupes?.type)">
-                        {{ etudiant.groupes?.nom || '—' }}
-                      </span>
-                    </td>
-                    <td>
-                      <span class="badge"
-                        [class]="getNiveauBadge(etudiant.niveau)">
-                        {{ etudiant.niveau || '—' }}
-                      </span>
-                    </td>
-                    <td>
-                      <a [routerLink]="['/prof/etudiants']"
-                        class="icon-btn" title="عرض">👁️</a>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          }
-        </div>
 
-        <!-- Alertes absence -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">⚠️ تنبيهات الغياب</div>
-            <a routerLink="/prof/presences" class="card-link">
-              إدارة الحضور ←
-            </a>
+            @if (etudiants().length === 0) {
+
+              <div class="empty-state">
+                <p>لا يوجد طلاب بعد</p>
+
+                <a routerLink="/prof/etudiants" class="btn-primary">
+                  + إضافة طالب
+                </a>
+              </div>
+
+            } @else {
+
+              <div class="table-responsive">
+                <table class="table">
+
+                  <thead>
+                    <tr>
+                      <th>الاسم</th>
+                      <th>المجموعة</th>
+                      <th>المستوى</th>
+                      <th>تاريخ الانضمام</th>
+                      <th>الإجراءات</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    @for (
+                      etudiant of etudiants().slice(0, 6);
+                      track etudiant.id
+                    ) {
+                      <tr>
+
+                        <td>
+                          <div class="stu-cell">
+                            <div class="stu-avatar">
+                              {{ etudiant.nom?.charAt(0) || 'ط' }}
+                            </div>
+
+                            <div class="stu-name">
+                              {{ etudiant.nom || '—' }}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          @if (etudiant.groupe_id) {
+                            @for (
+                              groupe of groupes();
+                              track groupe.id
+                            ) {
+                              @if (
+                                groupe.id === etudiant.groupe_id
+                              ) {
+                                <span class="badge badge-blue">
+                                  {{ groupe.nom }}
+                                </span>
+                              }
+                            }
+                          } @else {
+                            <span class="badge badge-gray">
+                              بدون مجموعة
+                            </span>
+                          }
+                        </td>
+
+                        <td>
+                          <span
+                            class="badge"
+                            [class]="getNiveauBadge(etudiant.niveau)">
+                            {{ etudiant.niveau || '—' }}
+                          </span>
+                        </td>
+
+                        <td class="td-date">
+                          {{
+                            etudiant.created_at
+                              ? (etudiant.created_at | date:'dd/MM/yyyy')
+                              : '—'
+                          }}
+                        </td>
+
+                        <td>
+                          <a
+                            routerLink="/prof/etudiants"
+                            class="icon-btn"
+                            title="عرض الطلاب">
+                            👁️
+                          </a>
+                        </td>
+
+                      </tr>
+                    }
+                  </tbody>
+
+                </table>
+              </div>
+
+            }
           </div>
 
-          @if (alertesGiaab().length === 0) {
-            <div class="empty-state">
-              <p>✅ لا توجد تنبيهات</p>
+          <!-- ABSENCE ALERTS -->
+          <div class="card">
+
+            <div class="card-header">
+              <div class="card-title">⚠️ تنبيهات الغياب</div>
+
+              <a routerLink="/prof/presences" class="card-link">
+                إدارة الحضور ←
+              </a>
             </div>
-          } @else {
-            <div class="alertes-list">
-              @for (alerte of alertesGiaab(); track alerte.id) {
-                <div class="alerte-item">
-                  <div class="alerte-avatar">
-                    {{ alerte.nom?.charAt(0) }}
-                  </div>
-                  <div class="alerte-info">
-                    <div class="alerte-nom">{{ alerte.nom }}</div>
-                    <div class="alerte-count">
-                      {{ alerte.count }} غياب مسجل
+
+            @if (alertesGiaab().length === 0) {
+
+              <div class="empty-state">
+                <p>✅ لا توجد تنبيهات غياب</p>
+              </div>
+
+            } @else {
+
+              <div class="alertes-list">
+
+                @for (alerte of alertesGiaab(); track alerte.id) {
+                  <div class="alerte-item">
+
+                    <div class="alerte-avatar">
+                      {{ alerte.nom?.charAt(0) || 'ط' }}
                     </div>
+
+                    <div class="alerte-info">
+                      <div class="alerte-nom">
+                        {{ alerte.nom }}
+                      </div>
+
+                      <div class="alerte-count">
+                        {{ alerte.count }} غياب مسجل
+                      </div>
+                    </div>
+
+                    <span class="badge badge-red">
+                      متابعة
+                    </span>
+
                   </div>
-                  <span class="badge badge-red">
-                    متابعة
-                  </span>
+                }
+
+              </div>
+
+            }
+
+            <!-- TODAY'S ATTENDANCE -->
+            <div
+              class="card-header"
+              style="margin-top:16px;padding-top:16px;border-top:1px solid #e0ded8">
+
+              <div class="card-title">📅 حضور اليوم</div>
+            </div>
+
+            <div class="presence-summary">
+
+              <div class="ps-item ps-green">
+                <span>حاضر</span>
+                <strong>{{ presenceAujourdhui() }}</strong>
+              </div>
+
+              <div class="ps-item ps-red">
+                <span>غير مسجل كحاضر</span>
+                <strong>
+                  {{
+                    totalEtudiants() > presenceAujourdhui()
+                      ? totalEtudiants() - presenceAujourdhui()
+                      : 0
+                  }}
+                </strong>
+              </div>
+
+              <div class="ps-item ps-amber">
+                <span>النسبة</span>
+                <strong>{{ getTauxPresence() }}%</strong>
+              </div>
+
+            </div>
+
+            <a
+              routerLink="/prof/presences"
+              class="btn-primary"
+              style="margin-top:12px;display:block;text-align:center">
+              📋 تسجيل الحضور الآن
+            </a>
+
+          </div>
+
+        </div>
+
+        <!-- PROGRAMMES -->
+        <div class="card">
+
+          <div class="card-header">
+            <div class="card-title">📚 البرامج التعليمية</div>
+          </div>
+
+          @if (programmes().length === 0) {
+
+            <div class="empty-state">
+              <p>لا توجد برامج تعليمية</p>
+            </div>
+
+          } @else {
+
+            <div class="kpi-grid">
+
+              @for (programme of programmes(); track programme.id) {
+                <div class="kpi-card kpi-blue">
+
+                  <div class="kpi-icon">📖</div>
+
+                  <div class="kpi-label">
+                    {{ programme.nom || 'برنامج بدون اسم' }}
+                  </div>
+
                 </div>
               }
+
             </div>
+
           }
 
-          <!-- Présence rapide aujourd'hui -->
-          <div class="card-header" style="margin-top:16px;padding-top:16px;border-top:0.5px solid #e0ded8">
-            <div class="card-title">📅 حضور اليوم</div>
-          </div>
-          <div class="presence-summary">
-            <div class="ps-item ps-green">
-              <span>حاضر</span>
-              <strong>{{ presenceAujourdhui() }}</strong>
-            </div>
-            <div class="ps-item ps-red">
-              <span>غائب</span>
-              <strong>
-                {{ totalEtudiants() - presenceAujourdhui() }}
-              </strong>
-            </div>
-            <div class="ps-item ps-amber">
-              <span>النسبة</span>
-              <strong>{{ getTauxPresence() }}%</strong>
-            </div>
-          </div>
-          <a routerLink="/prof/presences" class="btn-primary" style="margin-top:12px;display:block;text-align:center">
-            📋 تسجيل الحضور الآن
-          </a>
         </div>
 
       </div>
-
-      <!-- ── DEVOIRS RÉCENTS ─────────────────────── -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📝 واجبات لم تُسلَّم</div>
-          <a routerLink="/prof/devoirs" class="card-link">
-            إدارة الواجبات ←
-          </a>
-        </div>
-
-        @if (devoirsRecents().length === 0) {
-          <div class="empty-state">
-            <p>✅ كل الواجبات مسلّمة</p>
-          </div>
-        } @else {
-          <table class="table">
-            <thead>
-              <tr>
-                <th>الواجب</th>
-                <th>الطالب</th>
-                <th>الموعد النهائي</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (d of devoirsRecents(); track d.id) {
-                <tr>
-                  <td>{{ d.devoirs?.titre || '—' }}</td>
-                  <td>{{ d.profiles?.nom || '—' }}</td>
-                  <td>
-                    {{ d.devoirs?.deadline
-                      ? (d.devoirs.deadline | date:'dd/MM/yyyy')
-                      : '—' }}
-                  </td>
-                  <td>
-                    <span class="badge badge-red">
-                      {{ d.statut }}
-                    </span>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
-      </div>
-
-    </div>
-    } <!-- end @else loading -->
+    }
 
   </main>
 </div>
