@@ -75,7 +75,14 @@ export class RapportsComponent implements OnInit {
 
   }
 
-
+  getMaxEtudiants(): number {
+  return Math.max(
+    1,
+    ...this.repartitionGroupes().map(
+      g => Number(g.nbEtudiants) || 0
+    )
+  );
+}
   /* =========================================================
      SWITCH REPORT
   ========================================================= */
