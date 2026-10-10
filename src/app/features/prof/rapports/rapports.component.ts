@@ -1,1788 +1,678 @@
-import { Component, OnInit, signal} from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { SupabaseService } from '../../../core/services/supabase.service';
-import { AuthService } from '../../../core/services/auth.service';
-import { SidebarComponent } from '../sidebar/sidebar.component';
 
+import { Component, signal, computed, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
+import { SidebarComponent } from '../sidebar/sidebar.component';
+import { SupabaseService } from '../../../core/services/supabase.service';
+
+interface Etudiant {
+  id: string;
+  nom: string;
+  created_at?: string;
+  groupe_id?: number;
+}
+
+interface Groupe {
+  id: number;
+  nom: string;
+  type?: string;
+  nbEtudiants: number;
+}
+
+interface Sourate {
+  id: number;
+  nom: string;
+  nom_arabe?: string;
+  nb_ayat?: number;
+}
+
+interface Suivi {
+  id: string;
+  etudiant_id: string;
+  sourate_id: number;
+  ayat_debut: number;
+  ayat_fin: number;
+  statut: string;
+  evaluation: string;
+  updated_at: string;
+  sourates?: {
+    id?: number;
+    nom?: string;
+    nom_arabe?: string;
+    nb_ayat?: number;
+  } | null;
+}
+
+interface Presence {
+  id: string | number;
+  etudiant_id?: string;
+  date: string;
+  statut: string;
+}
+
+interface PresenceStat {
+  label: string;
+  value: number;
+  color: string;
+}
+
+interface SourateProgression {
+  id: number;
+  nom: string;
+  nom_arabe?: string;
+  total: number;
+  completees: number;
+  enCours: number;
+}
 
 @Component({
   selector: 'app-rapports',
   standalone: true,
-
-  imports: [
-    CommonModule,
-    FormsModule,
-    SidebarComponent
-  ],
-
+  imports: [CommonModule, SidebarComponent],
   templateUrl: './rapports.component.html',
   styleUrl: './rapports.component.css'
 })
 export class RapportsComponent implements OnInit {
 
-
-  /* =========================================================
-     VIEW
-  ========================================================= */
-  activeReport = signal<'general' | 'etudiant'>('general');
-  loading = signal(true);
-  /* =========================================================
-     GENERAL CHARTS
-  ========================================================= */
-
-  progressionSourates = signal<any[]>([]);
-  repartitionGroupes = signal<any[]>([]);
-  presenceStats = signal<any[]>([]);
-  evaluationStats = signal<any[]>([]);
-
-
-  /* =========================================================
-     STUDENTS
-  ========================================================= */
-  etudiants = signal<any[]>([]);
-  selectedEtudiantId = signal<string>('');
-  /* =========================================================
-     STUDENT REPORT
-  ========================================================= */
-  studentInfo = signal<any>(null);
-  studentGroupes = signal<any[]>([]);
-  studentSuivis = signal<any[]>([]);
-  studentPresences = signal<any[]>([]);
-  studentEvaluations = signal<any[]>([]);
-  /* =========================================================
-     STUDENT CHARTS
-  ========================================================= */
-  studentPresenceStats = signal<any[]>([]);
-  studentHifdStats = signal<any[]>([]);
-  /* =========================================================
-     CONSTRUCTOR
-  ========================================================= */
-
   constructor(
-    private sb: SupabaseService,
-    public auth: AuthService
+    private route: ActivatedRoute,
+    private sb: SupabaseService
   ) {}
 
+  /* =====================================================
+     SIGNALS
+  ===================================================== */
 
-  /* =========================================================
-     INIT
-  ========================================================= */
+  loading = signal(false);
 
-  async ngOnInit(): Promise<void> {
+  activeReport = signal<'general' | 'etudiant'>('general');
 
-    await this.loadGeneralReport();
+  etudiants = signal<Etudiant[]>([]);
+  groupes = signal<any[]>([]);
 
-  }
+  allSourates = signal<Sourate[]>([]);
 
-  getMaxEtudiants(): number {
-  return Math.max(
-    1,
-    ...this.repartitionGroupes().map(
-      g => Number(g.nbEtudiants) || 0
-    )
-  );
-}
-  /* =========================================================
-     SWITCH REPORT
-  ========================================================= */
+  studentSuivis = signal<Suivi[]>([]);
+  studentPresences = signal<Presence[]>([]);
+  studentGroupes = signal<any[]>([]);
 
-  async switchReport(
-    report: 'general' | 'etudiant'
-  ): Promise<void> {
+  selectedEtudiantId = signal('');
 
-    this.activeReport.set(report);
+  studentInfo = computed(() => {
+    const id = this.selectedEtudiantId();
 
-    if (report === 'general') {
-
-      await this.loadGeneralReport();
-
-      return;
+    if (!id) {
+      return null;
     }
 
+    return this.etudiants().find(
+      e => String(e.id) === String(id)
+    ) || null;
+  });
 
-    await this.loadEtudiants();
+  /* =====================================================
+     INITIALISATION
+  ===================================================== */
 
+  async ngOnInit(): Promise<void> {
+    await this.loadAllSourates();
+    await this.loadGeneralReport();
+
+    this.route.queryParams.subscribe(params => {
+      const id = params['etudiant'];
+
+      if (id) {
+        this.selectEtudiant(String(id));
+      }
+    });
   }
 
-
-  /* =========================================================
-     GENERAL REPORT
-  ========================================================= */
+  /* =====================================================
+     CHARGEMENT DES DONNEES GENERALES
+  ===================================================== */
 
   async loadGeneralReport(): Promise<void> {
-
     this.loading.set(true);
 
     try {
+      const { data: students, error: studentsError } =
+        await this.sb.client
+          .from('profiles')
+          .select('id, nom, groupe_id, created_at')
+          .eq('role', 'etudiant')
+          .order('nom');
 
-      await Promise.all([
-        this.loadProgressionSourates(),
-        this.loadRepartitionGroupes(),
-        this.loadPresenceStats(),
-        this.loadEvaluationStats()
-      ]);
+      if (studentsError) {
+        console.error('ETUDIANTS:', studentsError);
+        this.etudiants.set([]);
+      } else {
+        this.etudiants.set(
+          (students || []).map((e: any) => ({
+            id: String(e.id),
+            nom: e.nom || '',
+            groupe_id: e.groupe_id,
+            created_at: e.created_at || ''
+          }))
+        );
+      }
 
+      const { data: groupes, error: groupesError } =
+        await this.sb.client
+          .from('groupes')
+          .select('*')
+          .order('nom');
+
+      if (groupesError) {
+        console.error('GROUPES:', groupesError);
+        this.groupes.set([]);
+      } else {
+        const liste = (groupes || []).map((g: any) => {
+          const nb = this.etudiants().filter(
+            e => Number(e.groupe_id) === Number(g.id)
+          ).length;
+
+          return {
+            ...g,
+            nbEtudiants: nb
+          };
+        });
+
+        this.groupes.set(liste);
+      }
     } catch (error) {
-
-      console.error(
-        '❌ ERREUR RAPPORT GENERAL:',
-        error
-      );
-
+      console.error('LOAD GENERAL REPORT:', error);
     } finally {
-
       this.loading.set(false);
-
     }
-
-  }
-  /* =========================================================
-     GENERAL KPIs
-  ========================================================= */
-  async loadGeneralKPIs(): Promise<void> {
-    /* =====================================================
-       ETUDIANTS
-    ===================================================== */
-    const {
-      count: studentsCount,
-      error: studentsError
-    } = await this.sb.client
-
-      .from('profiles')
-
-      .select(
-        '*',
-        {
-          count: 'exact',
-          head: true
-        }
-      )
-
-      .eq(
-        'role',
-        'etudiant'
-      );
-
-
-    if (studentsError) {
-
-      console.error(
-        '❌ STUDENTS COUNT:',
-        studentsError
-      );
-
-    }
-
-    /* =====================================================
-       GROUPES
-    ===================================================== */
-
-    const {
-      count: groupesCount,
-      error: groupesError
-    } = await this.sb.client
-
-      .from('groupes')
-
-      .select(
-        '*',
-        {
-          count: 'exact',
-          head: true
-        }
-      );
-
-
-    if (groupesError) {
-
-      console.error(
-        '❌ GROUPES COUNT:',
-        groupesError
-      );
-
-    }
-    /* =====================================================
-       PROGRAMMES
-    ===================================================== */
-
-    const {
-      count: programmesCount,
-      error: programmesError
-    } = await this.sb.client
-
-      .from('programmes')
-
-      .select(
-        '*',
-        {
-          count: 'exact',
-          head: true
-        }
-      );
-
-
-    if (programmesError) {
-
-      console.error(
-        '❌ PROGRAMMES COUNT:',
-        programmesError
-      );
-
-    }
-    /* =====================================================
-       SUIVI SOURATES
-    ===================================================== */
-
-    const {
-      data: suivis,
-      error: suivisError
-    } = await this.sb.client
-
-      .from('suivi_sourates')
-
-      .select(`
-        id,
-        statut,
-        sourate_id,
-        ayat_debut,
-        ayat_fin
-      `);
-
-
-    if (suivisError) {
-
-      console.error(
-        '❌ SUIVI SOURATES:',
-        suivisError
-      );
-
-    }
-
-
-    const allSuivis =
-      suivis || [];
-    /* =====================================================
-       PRESENCES
-    ===================================================== */
-
-    const {
-      data: presences,
-      error: presencesError
-    } = await this.sb.client
-
-      .from('presences')
-
-      .select(`
-        id,
-        statut
-      `);
-
-
-    if (presencesError) {
-
-      console.error(
-        '❌ PRESENCES:',
-        presencesError
-      );
-
-    }
-    const allPresences = presences || [];
-
-    if (
-      allPresences.length > 0
-    ) {
-
-      const presents =
-        allPresences.filter(
-          p =>
-            p.statut === 'حاضر'
-        ).length;
-
-      }
-
-
-    /* =====================================================
-       EVALUATIONS
-    ===================================================== */
-
-    const {
-      data: evaluations,
-      error: evaluationsError
-    } = await this.sb.client
-
-      .from('evaluations')
-
-      .select(`
-        note,
-        note_max
-      `);
-
-
-    if (evaluationsError) {
-
-      console.error(
-        '❌ EVALUATIONS:',
-        evaluationsError
-      );
-
-    }
-
-
   }
 
-  /* =========================================================
-     PROGRESSION SOURATES
-  ========================================================= */
-
-  async loadProgressionSourates(): Promise<void> {
-
-    const {
-      data: sourates,
-      error: souratesError
-    } = await this.sb.client
-
-      .from('sourates')
-
-      .select(`
-        id,
-        nom,
-        nom_arabe,
-        nb_ayat
-      `)
-
-      .order(
-        'id'
-      );
-
-
-    if (souratesError) {
-
-      console.error(
-        '❌ SOURATES:',
-        souratesError
-      );
-
-      this.progressionSourates.set([]);
-
-      return;
-
-    }
-
-
-    const {
-      data: suivis,
-      error: suivisError
-    } = await this.sb.client
-
-      .from('suivi_sourates')
-
-      .select(`
-        sourate_id,
-        statut,
-        ayat_debut,
-        ayat_fin
-      `);
-
-
-    if (suivisError) {
-
-      console.error(
-        '❌ SUIVIS SOURATES:',
-        suivisError
-      );
-
-      this.progressionSourates.set([]);
-
-      return;
-
-    }
-
-
-    const result =
-      (sourates || [])
-
-        .map(
-          s => {
-
-            const related =
-              (suivis || [])
-                .filter(
-                  sv =>
-                    sv.sourate_id ===
-                    s.id
-                );
-
-
-            const completees =
-              related.filter(
-                sv =>
-                  sv.statut === 'مكتملة' ||
-                  sv.statut === 'مكتمل'
-              ).length;
-
-
-            const enCours =
-              related.filter(
-                sv =>
-                  sv.statut === 'جارية' ||
-                  sv.statut === 'قيد التقدم'
-              ).length;
-
-
-            return {
-
-              ...s,
-
-              completees,
-
-              enCours,
-
-              total:
-                related.length
-
-            };
-
-          }
-        )
-
-        .filter(
-          s =>
-            s.total > 0
-        );
-
-
-    this.progressionSourates.set(
-      result
-    );
-
-  }
-
-
-  /* =========================================================
-     GROUPES
-  ========================================================= */
-
-  async loadRepartitionGroupes(): Promise<void> {
-
-    const {
-      data: groupes,
-      error: groupesError
-    } = await this.sb.client
-
-      .from('groupes')
-
-      .select(`
-        id,
-        nom,
-        type
-      `)
-
-      .order(
-        'nom'
-      );
-
-
-    if (groupesError) {
-
-      console.error(
-        '❌ GROUPES:',
-        groupesError
-      );
-
-      this.repartitionGroupes.set([]);
-
-      return;
-
-    }
-
-
-    const {
-      data: inscriptions,
-      error: inscriptionsError
-    } = await this.sb.client
-
-      .from('groupe_etudiants')
-
-      .select(`
-        groupe_id,
-        etudiant_id
-      `);
-
-
-    if (inscriptionsError) {
-
-      console.error(
-        '❌ GROUPE ETUDIANTS:',
-        inscriptionsError
-      );
-
-      this.repartitionGroupes.set([]);
-
-      return;
-
-    }
-
-
-    const result =
-
-      (groupes || [])
-
-        .map(
-          g => {
-
-            const students =
-              (inscriptions || [])
-                .filter(
-                  x =>
-                    x.groupe_id ===
-                    g.id
-                );
-
-
-            return {
-
-              ...g,
-
-              nbEtudiants:
-                students.length
-
-            };
-
-          }
-        )
-
-        .filter(
-          g =>
-            g.nbEtudiants > 0
-        );
-
-
-    this.repartitionGroupes.set(
-      result
-    );
-
-  }
-
-
-  /* =========================================================
-     PRESENCE GLOBAL
-  ========================================================= */
-
-  async loadPresenceStats(): Promise<void> {
-
-    const {
-      data,
-      error
-    } = await this.sb.client
-
-      .from('presences')
-
-      .select(`
-        date,
-        statut
-      `)
-
-      .order(
-        'date',
-        {
-          ascending: true
-        }
-      );
-
-
-    if (error) {
-
-      console.error(
-        '❌ PRESENCE GLOBAL:',
-        error
-      );
-
-      this.presenceStats.set([]);
-
-      return;
-
-    }
-
-
-    if (!data) {
-
-      this.presenceStats.set([]);
-
-      return;
-
-    }
-
-
-    const grouped: any = {};
-
-
-    data.forEach(
-      p => {
-
-        const date =
-          new Date(
-            p.date
-          );
-
-
-        const key =
-          date.toLocaleDateString(
-            'fr-FR',
-            {
-              month: 'short'
-            }
-          );
-
-
-        if (!grouped[key]) {
-
-          grouped[key] = {
-
-            label: key,
-
-            present: 0,
-
-            absent: 0,
-
-            total: 0
-
-          };
-
-        }
-
-
-        grouped[key].total++;
-
-
-        if (
-          p.statut === 'حاضر'
-        ) {
-
-          grouped[key].present++;
-
-        }
-
-
-        if (
-          p.statut === 'غائب'
-        ) {
-
-          grouped[key].absent++;
-
-        }
-
-      }
-    );
-
-
-    this.presenceStats.set(
-
-      Object.values(
-        grouped
-      ).slice(-6)
-
-    );
-
-  }
-
-
-  /* =========================================================
-     EVALUATIONS GLOBAL
-  ========================================================= */
-
-  async loadEvaluationStats(): Promise<void> {
-
-    const {
-      data,
-      error
-    } = await this.sb.client
-
-      .from('evaluations')
-
-      .select(`
-        note,
-        note_max,
-        type
-      `);
-
-
-    if (error) {
-
-      console.error(
-        '❌ EVALUATIONS GLOBAL:',
-        error
-      );
-
-      this.evaluationStats.set([]);
-
-      return;
-
-    }
-
-
-    if (!data) {
-
-      this.evaluationStats.set([]);
-
-      return;
-
-    }
-
-
-    const grouped: any = {};
-
-
-    data.forEach(
-      e => {
-
-        const type =
-          e.type ||
-          'تقييم';
-
-
-        if (!grouped[type]) {
-
-          grouped[type] = {
-
-            label: type,
-
-            total: 0,
-
-            sum: 0
-
-          };
-
-        }
-
-
-        const max =
-          Number(
-            e.note_max
-          ) || 20;
-
-
-        const note =
-          Number(
-            e.note
-          ) || 0;
-
-
-        grouped[type].sum +=
-          (
-            note /
-            max
-          ) * 20;
-
-
-        grouped[type].total++;
-
-      }
-    );
-
-
-    const result =
-      Object.values(
-        grouped
-      ).map(
-        (x: any) => ({
-
-          label:
-            x.label,
-
-          total:
-            x.total,
-
-          moyenne:
-            Math.round(
-              (
-                x.sum /
-                x.total
-              ) * 10
-            ) / 10
-
-        })
-      );
-
-
-    this.evaluationStats.set(
-      result
-    );
-
-  }
-
-
-  /* =========================================================
-     LOAD STUDENTS
-  ========================================================= */
-
-  async loadEtudiants(): Promise<void> {
+  /* =====================================================
+     CHARGEMENT DE TOUTES LES SOURATES
+  ===================================================== */
+
+  
+async loadAllSourates(): Promise<void> {
   const { data, error } = await this.sb.client
-    .from('profiles')
-    .select(`
-      id,
-      nom
-    `)
-    .eq('role', 'etudiant')
-    .order('nom', { ascending: true });
+    .from('sourates')
+    .select('*')
+    .order('id', { ascending: true });
 
   if (error) {
-    console.error('❌ ETUDIANTS:', error);
-    this.etudiants.set([]);
+    console.error('LOAD SOURATES:', error.message, error);
+    this.allSourates.set([]);
     return;
   }
 
-  console.log('✅ ETUDIANTS:', data);
+  const sourates: Sourate[] = (data ?? []).map((s: any) => ({
+    id: Number(s.id),
+    nom: String(s.nom ?? s.name ?? ''),
+    nom_arabe: String(s.nom_arabe ?? s.arabic_name ?? ''),
+    nb_ayat: Number(
+      s.nb_ayat ?? s.nombre_ayat ?? s.total_ayat ?? s.ayat_count ?? 0
+    )
+  }));
 
-  this.etudiants.set(data || []);
+  this.allSourates.set(sourates);
 }
 
+  /* =====================================================
+     CHOIX D'UN ETUDIANT
+  ===================================================== */
 
-  /* =========================================================
-     SELECT STUDENT
-  ========================================================= */
+  async selectEtudiant(id: string): Promise<void> {
+    this.selectedEtudiantId.set(String(id || ''));
 
-  async selectEtudiant(
-    id: string
-  ): Promise<void> {
-
-    this.selectedEtudiantId.set(
-      id
-    );
-
-
-    if (!id) {
-
-      this.clearStudentReport();
-
-      return;
-
-    }
-
-
-    await this.loadStudentReport(
-      id
-    );
-
-  }
-
-
-  /* =========================================================
-     CLEAR STUDENT REPORT
-  ========================================================= */
-
-  clearStudentReport(): void {
-    this.studentInfo.set(null);
-    this.studentGroupes.set([]);
     this.studentSuivis.set([]);
     this.studentPresences.set([]);
-    this.studentEvaluations.set([]);
-    this.studentPresenceStats.set([]);
-    this.studentHifdStats.set([]);
-  }
+    this.studentGroupes.set([]);
 
-
-  /* =========================================================
-     STUDENT REPORT
-  ========================================================= */
-
-  async loadStudentReport(
-    studentId: string
-  ): Promise<void> {
-
-    this.loading.set(true);
-
-    try {
-
-      await Promise.all([
-
-        this.loadStudentInfo(
-          studentId
-        ),
-
-        this.loadStudentGroupes(
-          studentId
-        ),
-
-        this.loadStudentHifd(
-          studentId
-        ),
-
-        this.loadStudentPresence(
-          studentId
-        ),
-
-        this.loadStudentEvaluations(
-          studentId
-        )
-
-      ]);
-
-    } catch (error) {
-
-      console.error(
-        '❌ RAPPORT ETUDIANT:',
-        error
-      );
-
-    } finally {
-
-      this.loading.set(false);
-
-    }
-
-  }
-
-
-  /* =========================================================
-     STUDENT INFO
-  ========================================================= */
-
-  async loadStudentInfo(
-    studentId: string
-  ): Promise<void> {
-
-    const {
-      data,
-      error
-    } = await this.sb.client
-
-      .from('profiles')
-
-      .select(`
-        id,
-        nom,
-        created_at
-      `)
-
-      .eq(
-        'id',
-        studentId
-      )
-
-      .maybeSingle();
-
-
-    if (error) {
-
-      console.error(
-        '❌ INFO ETUDIANT:',
-        error
-      );
-
-    }
-
-
-    this.studentInfo.set(
-      data || null
-    );
-
-  }
-
-
-  /* =========================================================
-     STUDENT GROUPES + PROGRAMMES
-  ========================================================= */
-
-  async loadStudentGroupes(
-    studentId: string
-  ): Promise<void> {
-
-    const {
-      data,
-      error
-    } = await this.sb.client
-
-      .from('groupe_etudiants')
-
-      .select(`
-        groupe_id,
-        groupes(
-          id,
-          nom,
-          type,
-          programme_id,
-          programmes(
-            id,
-            nom
-          )
-        )
-      `)
-
-      .eq(
-        'etudiant_id',
-        studentId
-      );
-
-
-    if (error) {
-
-      console.error(
-        '❌ GROUPES ETUDIANT:',
-        error
-      );
-
-      this.studentGroupes.set([]);
-
+    if (!id) {
       return;
-
     }
 
-
-    const groupes =
-      (data || [])
-
-        .map(
-          (x: any) =>
-            x.groupes
-        )
-
-        .filter(
-          Boolean
-        );
-
-
-    this.studentGroupes.set(
-      groupes
-    );
-
+    await Promise.all([
+      this.loadStudentSuivis(id),
+      this.loadStudentPresences(id),
+      this.loadStudentGroupes(id)
+    ]);
   }
 
+  /* =====================================================
+     SUIVI DU HIFD
+  ===================================================== */
 
-  /* =========================================================
-     STUDENT HIFD
-  ========================================================= */
+  
+async loadStudentSuivis(id: string): Promise<void> {
+  const { data, error } = await this.sb.client
+    .from('suivi_sourates')
+    .select('*')
+    .eq('etudiant_id', id);
 
-  async loadStudentHifd(
-    studentId: string
-  ): Promise<void> {
-
-    const {
-      data,
-      error
-    } = await this.sb.client
-
-      .from('suivi_sourates')
-
-      .select(`
-        id,
-        sourate_id,
-        ayat_debut,
-        ayat_fin,
-        statut,
-        evaluation,
-        updated_at,
-        sourates(
-          id,
-          nom,
-          nom_arabe,
-          nb_ayat
-        )
-      `)
-
-      .eq(
-        'etudiant_id',
-        studentId
-      )
-
-      .order(
-        'updated_at',
-        {
-          ascending: false
-        }
-      );
-
-
-    if (error) {
-
-      console.error(
-        '❌ HIFD ETUDIANT:',
-        error
-      );
-
-      this.studentSuivis.set([]);
-
-      this.studentHifdStats.set([]);
-
-      return;
-
-    }
-
-
-    const suivis =
-      data || [];
-
-
-    this.studentSuivis.set(
-      suivis
-    );
-
-
-    this.buildStudentHifdChart(
-      suivis
-    );
-
+  if (error) {
+    console.error('LOAD STUDENT SUIVIS:', error.message, error);
+    this.studentSuivis.set([]);
+    return;
   }
 
+  const sourates = this.allSourates();
 
-  /* =========================================================
-     STUDENT PRESENCE
-  ========================================================= */
+  const suivis: Suivi[] = (data ?? []).map((s: any) => {
+    const sourateId = Number(s.sourate_id);
+    const sourate = sourates.find(x => x.id === sourateId);
 
-  async loadStudentPresence(
-    studentId: string
-  ): Promise<void> {
+    return {
+      id: String(s.id),
+      etudiant_id: String(s.etudiant_id),
+      sourate_id: sourateId,
+      ayat_debut: Number(s.ayat_debut ?? s.ayah_start ?? 0),
+      ayat_fin: Number(s.ayat_fin ?? s.ayah_end ?? 0),
+      statut: String(s.statut ?? ''),
+      evaluation: String(s.evaluation ?? ''),
+      updated_at: String(s.updated_at ?? ''),
+      sourates: sourate
+        ? {
+            id: sourate.id,
+            nom: sourate.nom,
+            nom_arabe: sourate.nom_arabe,
+            nb_ayat: sourate.nb_ayat
+          }
+        : null
+    };
+  });
 
-    const {
-      data,
-      error
-    } = await this.sb.client
+  suivis.sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() -
+      new Date(a.updated_at).getTime()
+  );
 
+  this.studentSuivis.set(suivis);
+}
+
+  /* =====================================================
+     PRESENCES
+     Vérifier le nom de la table dans Supabase.
+  ===================================================== */
+
+  async loadStudentPresences(id: string): Promise<void> {
+    const { data, error } = await this.sb.client
       .from('presences')
-
-      .select(`
-        id,
-        date,
-        statut
-      `)
-
-      .eq(
-        'etudiant_id',
-        studentId
-      )
-
-      .order(
-        'date',
-        {
-          ascending: true
-        }
-      );
-
+      .select('id, etudiant_id, date, statut')
+      .eq('etudiant_id', id)
+      .order('date', { ascending: true });
 
     if (error) {
-
-      console.error(
-        '❌ PRESENCE ETUDIANT:',
-        error
-      );
-
+      console.error('STUDENT PRESENCES:', error);
       this.studentPresences.set([]);
-
-      this.studentPresenceStats.set([]);
-
       return;
-
     }
-
-
-    const presences =
-      data || [];
-
 
     this.studentPresences.set(
-      presences
+      (data || []).map((p: any) => ({
+        id: p.id,
+        etudiant_id: String(p.etudiant_id),
+        date: p.date || '',
+        statut: p.statut || ''
+      }))
     );
-
-
-    this.buildStudentPresenceChart(
-      presences
-    );
-
   }
 
+  /* =====================================================
+     GROUPES DE L'ETUDIANT
+  ===================================================== */
 
-  /* =========================================================
-     STUDENT EVALUATIONS
-  ========================================================= */
+  async loadStudentGroupes(id: string): Promise<void> {
+    const student = this.etudiants().find(
+      e => String(e.id) === String(id)
+    );
 
-  async loadStudentEvaluations(
-    studentId: string
-  ): Promise<void> {
-
-    const {
-      data,
-      error
-    } = await this.sb.client
-
-      .from('evaluations')
-
-      .select(`
-        id,
-        note,
-        note_max,
-        type,
-        date,
-        created_at,
-        sourates(
-          id,
-          nom,
-          nom_arabe
-        )
-      `)
-
-      .eq(
-        'etudiant_id',
-        studentId
-      )
-
-      .order(
-        'created_at',
-        {
-          ascending: false
-        }
-      );
-
-
-    if (error) {
-
-      console.error(
-        '❌ EVALUATIONS ETUDIANT:',
-        error
-      );
-
-      this.studentEvaluations.set([]);
+    if (!student?.groupe_id) {
+      this.studentGroupes.set([]);
       return;
-
     }
 
-
-    const evaluations =
-      data || [];
-
-
-    this.studentEvaluations.set(
-      evaluations
+    const groupe = this.groupes().find(
+      g => Number(g.id) === Number(student.groupe_id)
     );
 
-
-    this.buildStudentEvaluationChart(
-      evaluations
-    );
-
+    this.studentGroupes.set(groupe ? [groupe] : []);
   }
 
+  /* =====================================================
+     RAFRAICHISSEMENT
+  ===================================================== */
 
-  /* =========================================================
-     STUDENT HIFD CHART
-  ========================================================= */
+  async refresh(): Promise<void> {
+    await this.loadAllSourates();
+    await this.loadGeneralReport();
 
-  buildStudentHifdChart(
-    suivis: any[]
-  ): void {
+    const id = this.selectedEtudiantId();
 
-    const completees =
-      suivis.filter(
-        s =>
-          s.statut === 'مكتملة' ||
-          s.statut === 'مكتمل'
-      ).length;
-
-
-    const enCours =
-      suivis.filter(
-        s =>
-          s.statut === 'جارية' ||
-          s.statut === 'قيد التقدم'
-      ).length;
-
-
-    const total =
-      suivis.length;
-
-
-    const autres =
-      Math.max(
-        0,
-        total -
-        completees -
-        enCours
-      );
-
-
-    this.studentHifdStats.set([
-
-      {
-        label: 'مكتملة',
-        value: completees,
-        color: '#1D9E75'
-      },
-
-      {
-        label: 'جارية',
-        value: enCours,
-        color: '#1B6FA8'
-      },
-
-      {
-        label: 'أخرى',
-        value: autres,
-        color: '#D85A30'
-      }
-
-    ]);
-
-  }
-
-
-  /* =========================================================
-     STUDENT PRESENCE CHART
-  ========================================================= */
-
-  buildStudentPresenceChart(
-    presences: any[]
-  ): void {
-
-    const present =
-      presences.filter(
-        p =>
-          p.statut === 'حاضر'
-      ).length;
-
-
-    const absent =
-      presences.filter(
-        p =>
-          p.statut === 'غائب'
-      ).length;
-
-
-    const other =
-      Math.max(
-        0,
-        presences.length -
-        present -
-        absent
-      );
-
-
-    this.studentPresenceStats.set([
-
-      {
-        label: 'حاضر',
-        value: present,
-        color: '#1D9E75'
-      },
-
-      {
-        label: 'غائب',
-        value: absent,
-        color: '#D85A30'
-      },
-
-      {
-        label: 'أخرى',
-        value: other,
-        color: '#888'
-      }
-
-    ]);
-
-  }
-
-
-  /* =========================================================
-     STUDENT EVALUATION CHART
-  ========================================================= */
-
-  buildStudentEvaluationChart(
-    evaluations: any[]
-  ): void {
-
-    const result =
-
-      evaluations
-
-        .slice(
-          0,
-          8
-        )
-
-        .reverse()
-
-        .map(
-          e => {
-
-            const max =
-              Number(
-                e.note_max
-              ) || 20;
-
-
-            const note =
-              Number(
-                e.note
-              ) || 0;
-
-
-            return {
-
-              label:
-                e.sourates?.nom ||
-                e.type ||
-                'تقييم',
-
-              value:
-                Math.round(
-                  (
-                    note /
-                    max
-                  ) * 20 * 10
-                ) / 10
-
-            };
-
-          }
-        );
-  }
-
-
-  /* =========================================================
-     BAR WIDTH
-  ========================================================= */
-
-  getBarWidth(
-    value: number,
-    max: number
-  ): number {
-
-    if (!max) {
-      return 0;
+    if (id) {
+      await this.selectEtudiant(id);
     }
-
-
-    return Math.min(
-
-      100,
-
-      Math.round(
-        (
-          value /
-          max
-        ) * 100
-      )
-
-    );
-
   }
 
-
-  /* =========================================================
-     STUDENT PRESENCE %
-  ========================================================= */
-
-  getPresencePercent(): number {
-
-    const stats =
-      this.studentPresenceStats();
-
-
-    const present =
-      stats.find(
-        x =>
-          x.label === 'حاضر'
-      )?.value || 0;
-
-
-    const total =
-      stats.reduce(
-        (
-          sum,
-          x
-        ) =>
-          sum + x.value,
-        0
-      );
-
-
-    if (!total) {
-      return 0;
-    }
-
-
-    return Math.round(
-      (
-        present /
-        total
-      ) * 100
-    );
-
+  switchReport(report: 'general' | 'etudiant'): void {
+    this.activeReport.set(report);
   }
 
-
-  /* =========================================================
-     STUDENT HIFD COMPLETED
-  ========================================================= */
-
-  getStudentHifdCompletees(): number {
-
-    return this.studentSuivis()
-
-      .filter(
-        s =>
-          s.statut === 'مكتملة' ||
-          s.statut === 'مكتمل'
-      )
-
-      .length;
-
-  }
-
-
-  /* =========================================================
-     STUDENT HIFD TOTAL
-  ========================================================= */
-
-  getStudentHifdTotal(): number {
-
-    return this.studentSuivis()
-      .length;
-
-  }
-
-
-  /* =========================================================
-     STUDENT AVERAGE
-  ========================================================= */
-
-  getStudentAverage(): number {
-
-    const evals =
-      this.studentEvaluations();
-
-
-    if (!evals.length) {
-      return 0;
-    }
-
-
-    const total =
-      evals.reduce(
-
-        (
-          sum,
-          e
-        ) => {
-
-          const max =
-            Number(
-              e.note_max
-            ) || 20;
-
-
-          const note =
-            Number(
-              e.note
-            ) || 0;
-
-
-          return (
-
-            sum +
-
-            (
-              note /
-              max
-            ) * 20
-
-          );
-
-        },
-
-        0
-
-      );
-
-
-    return Math.round(
-
-      (
-        total /
-        evals.length
-      ) * 10
-
-    ) / 10;
-
-  }
-
-
-  /* =========================================================
-     STUDENT TOTAL AYAT
-  ========================================================= */
-
-  getStudentTotalAyat(): number {
-
-    return this.studentSuivis()
-
-      .reduce(
-        (
-          total,
-          s
-        ) => {
-
-          const debut =
-            Number(
-              s.ayat_debut
-            ) || 0;
-
-
-          const fin =
-            Number(
-              s.ayat_fin
-            ) || 0;
-
-
-          if (
-            fin >= debut &&
-            debut > 0
-          ) {
-
-            return (
-              total +
-              (
-                fin -
-                debut +
-                1
-              )
-            );
-
-          }
-
-
-          return total;
-
-        },
-
-        0
-
-      );
-
-  }
-
-
-  /* =========================================================
-     NOTE CLASS
-  ========================================================= */
-
-  getNoteClass(
-    note: number,
-    max: number
-  ): string {
-
-    const pct =
-      max
-        ? note / max
-        : 0;
-
-
-    if (
-      pct >= 0.85
-    ) {
-
-      return 'note-green';
-
-    }
-
-
-    if (
-      pct >= 0.65
-    ) {
-
-      return 'note-amber';
-
-    }
-
-
-    return 'note-red';
-
-  }
-
-
-  /* =========================================================
-     GROUPE COLOR
-  ========================================================= */
-
-  getGroupeColor(
-    type: string
-  ): string {
-
-    const colors: any = {
-
-      'رجال':
-        '#1B6FA8',
-
-      'نساء':
-        '#534AB7',
-
-      'أطفال':
-        '#1D9E75'
-
-    };
-
-
-    return (
-      colors[type] ||
-      '#888'
-    );
-
-  }
-
-
-  /* =========================================================
-     FORMAT DATE
-  ========================================================= */
-
-  formatDate(
-    value: string
-  ): string {
-
+  /* =====================================================
+     DATES
+  ===================================================== */
+
+  formatDate(value: string | null | undefined): string {
     if (!value) {
       return '—';
     }
 
+    const date = new Date(value);
 
-    return new Date(
-      value
-    ).toLocaleDateString(
-      'ar-MA'
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(date);
+  }
+
+  /* =====================================================
+     PRESENCES TRIEES
+     Plus récent en premier
+  ===================================================== */
+
+  getPresencesSorted(): Presence[] {
+    return [...this.studentPresences()].sort(
+      (a, b) =>
+        new Date(b.date).getTime() -
+        new Date(a.date).getTime()
+    );
+  }
+
+  /* =====================================================
+     POURCENTAGE DE PRESENCE
+  ===================================================== */
+
+  getPresencePercent(): number {
+    const presences = this.studentPresences();
+
+    if (!presences.length) {
+      return 0;
+    }
+
+    const presents = presences.filter(
+      p => p.statut === 'حاضر'
+    ).length;
+
+    return Math.round(
+      (presents / presences.length) * 100
+    );
+  }
+
+  /* =====================================================
+     STATISTIQUES DU BAR CHART DE PRESENCE
+  ===================================================== */
+
+  studentPresenceStats(): PresenceStat[] {
+    const presences = this.studentPresences();
+
+    return [
+      {
+        label: 'حاضر',
+        value: presences.filter(
+          p => p.statut === 'حاضر'
+        ).length,
+        color: '#1D9E75'
+      },
+      {
+        label: 'غائب',
+        value: presences.filter(
+          p => p.statut === 'غائب'
+        ).length,
+        color: '#D85A30'
+      },
+      {
+        label: 'متأخر',
+        value: presences.filter(
+          p => p.statut === 'متأخر'
+        ).length,
+        color: '#D9A441'
+      }
+    ];
+  }
+
+  getMaxPresenceValue(): number {
+    return Math.max(
+      1,
+      ...this.studentPresenceStats().map(s => s.value)
+    );
+  }
+
+  /* =====================================================
+     CALCUL DES AYAT DU HIFD
+  ===================================================== */
+
+  
+getHifdAyatStats(): {
+  total: number;
+  achieved: number;
+  enCours: number;
+  remaining: number;
+  percentAchieved: number;
+  percentEnCours: number;
+  percent: number;
+} {
+  const sourates = this.allSourates();
+  const suivis = this.studentSuivis();
+
+  let total = 0;
+  let achieved = 0;
+  let enCours = 0;
+
+  const grouped = new Map<number, Suivi[]>();
+
+  for (const suivi of suivis) {
+    const list = grouped.get(suivi.sourate_id) ?? [];
+    list.push(suivi);
+    grouped.set(suivi.sourate_id, list);
+  }
+
+  for (const [sourateId, list] of grouped) {
+    const sourate = sourates.find(s => s.id === sourateId);
+    const nbAyat = Number(sourate?.nb_ayat ?? 0);
+
+    if (nbAyat <= 0) continue;
+
+    total += nbAyat;
+
+    const complete = list.some(s => {
+      const statut = this.normalizeStatus(s.statut);
+      return (
+        statut === 'مكتمل' ||
+        statut === 'مكتملة' ||
+        statut === 'complete' ||
+        statut === 'completed' ||
+        Number(s.ayat_fin) >= nbAyat
+      );
+    });
+
+    if (complete) {
+      achieved += nbAyat;
+      continue;
+    }
+
+    // نحسب أكبر رقم آية وصل ليه الطالب فالسورة.
+    const maxFin = Math.max(
+      0,
+      ...list.map(s => Number(s.ayat_fin) || 0)
     );
 
+    enCours += Math.min(maxFin, nbAyat);
   }
 
+  achieved = Math.min(achieved, total);
+  enCours = Math.min(enCours, Math.max(0, total - achieved));
 
-  /* =========================================================
-     REFRESH
-  ========================================================= */
+  const remaining = Math.max(0, total - achieved - enCours);
 
-  async refresh(): Promise<void> {
+  const percentAchieved = total > 0
+    ? Math.round((achieved / total) * 100)
+    : 0;
 
-    if (
-      this.activeReport() ===
-      'general'
-    ) {
+  const percentEnCours = total > 0
+    ? Math.round((enCours / total) * 100)
+    : 0;
 
-      await this.loadGeneralReport();
-
-      return;
-
-    }
-
-
-    await this.loadEtudiants();
-
-
-    const id =
-      this.selectedEtudiantId();
-
-
-    if (id) {
-
-      await this.loadStudentReport(
-        id
-      );
-
-    }
-
-  }
-
+  return {
+    total,
+    achieved,
+    enCours,
+    remaining,
+    percentAchieved,
+    percentEnCours,
+    percent: percentAchieved
+  };
 }
 
+private normalizeStatus(value: string | null | undefined): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase();
+}
+  /* =====================================================
+     DONUT GRADIENT - 3 COULEURS
+  ===================================================== */
+
+  getHifdDonutGradient(): string {
+    const stats = this.getHifdAyatStats();
+
+    const p1 = stats.total > 0
+      ? (stats.achieved / stats.total) * 100
+      : 0;
+
+    const p2 = stats.total > 0
+      ? p1 + (stats.enCours / stats.total) * 100
+      : 0;
+
+    return `conic-gradient(
+      #1D9E75 0% ${p1}%,
+      #1B6FA8 ${p1}% ${p2}%,
+      #E5E7EB ${p2}% 100%
+    )`;
+  }
+
+  /* =====================================================
+     NOMBRE DE SOURATES SUIVIES
+  ===================================================== */
+
+  getStudentHifdTotal(): number {
+    return new Set(
+      this.studentSuivis().map(s => s.sourate_id)
+    ).size;
+  }
+
+  getStudentHifdCompletees(): number {
+    return new Set(
+      this.studentSuivis()
+        .filter(s => s.statut === 'مكتمل')
+        .map(s => s.sourate_id)
+    ).size;
+  }
+
+  /* =====================================================
+     SOURATE MAP
+  ===================================================== */
+
+  isSourateCompletee(sourateId: number): boolean {
+    return this.studentSuivis().some(
+      s =>
+        s.sourate_id === sourateId &&
+        s.statut === 'مكتمل'
+    );
+  }
+
+  isSourateEnCours(sourateId: number): boolean {
+    return this.studentSuivis().some(
+      s =>
+        s.sourate_id === sourateId &&
+        (
+          s.statut === 'جاري' ||
+          s.statut === 'مراجعة'
+        )
+    );
+  }
+
+
+  /* =====================================================
+     COULEURS DES GROUPES
+  ===================================================== */
+
+  getGroupeColor(type: string | undefined): string {
+    const couleurs: Record<string, string> = {
+      'أطفال': '#1B6FA8',
+      'كبار': '#1D9E75',
+      'نساء': '#9B59B6',
+      'رجال': '#D9A441',
+      'مبتدئين': '#D85A30'
+    };
+
+    return couleurs[type || ''] || '#1B6FA8';
+  }
+
+  /* =====================================================
+     BAR WIDTH
+  ===================================================== */
+
+  getBarWidth(value: number, max: number): number {
+    if (!max || max <= 0) {
+      return 0;
+    }
+
+    return Math.min(
+      100,
+      Math.max(0, (Number(value) / max) * 100)
+    );
+  }
+
+  getMaxEtudiants(): number {
+    return Math.max(
+      1,
+      ...this.groupes().map(g => Number(g.nbEtudiants) || 0)
+    );
+  }
+
+  /* =====================================================
+     PROGRESSION GENERALE DES SOURATES
+  ===================================================== */
+
+  progressionSourates(): SourateProgression[] {
+    const suivis = this.studentSuivis();
+    const sourates = this.allSourates();
+
+    return sourates
+      .map(s => {
+        const liste = suivis.filter(
+          suivi => suivi.sourate_id === s.id
+        );
+
+        return {
+          id: s.id,
+          nom: s.nom,
+          nom_arabe: s.nom_arabe,
+          total: liste.length,
+          completees: liste.filter(
+            h => h.statut === 'مكتمل'
+          ).length,
+          enCours: liste.filter(
+            h =>
+              h.statut === 'جاري' ||
+              h.statut === 'مراجعة'
+          ).length
+        };
+      })
+      .filter(s => s.total > 0);
+  }
+}
