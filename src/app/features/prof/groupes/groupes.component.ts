@@ -110,26 +110,87 @@ async loadData(): Promise<void> {
   this.errorMsg.set('');
 
   try {
-    const { data, error, status } = await this.sb.client
-      .from('programmes')
-      .select('id, nom')
-      .order('nom');
+    /* =====================================================
+       PROGRAMMES
+    ===================================================== */
 
-    console.log('Supabase status:', status);
-    console.log('Supabase error:', error);
-    console.log('Programmes reçus:', data?.length ?? 0);
+    const { data: programmesData, error: programmesError } =
+      await this.sb.client
+        .from('programmes')
+        .select('id, nom')
+        .order('nom');
 
-    if (error) {
-      throw error;
-    }
+    if (programmesError) throw programmesError;
 
-    this.programmes.set(data ?? []);
+    this.programmes.set(programmesData ?? []);
+
+    /* =====================================================
+       GROUPES
+    ===================================================== */
+
+    const { data: groupesData, error: groupesError } =
+      await this.sb.client
+        .from('groupes')
+        .select('id, nom, couleur, programme_id')
+        .order('nom');
+
+    if (groupesError) throw groupesError;
+
+    /* =====================================================
+       ETUDIANTS
+    ===================================================== */
+
+    const { data: etudiantsData, error: etudiantsError } =
+      await this.sb.client
+        .from('profiles')
+        .select('id, nom')
+        .eq('role', 'etudiant')
+        .order('nom');
+
+    if (etudiantsError) throw etudiantsError;
+
+    this.etudiants.set(etudiantsData ?? []);
+
+    /* =====================================================
+       RELATIONS GROUPE_ETUDIANTS (pour compter)
+    ===================================================== */
+
+    const { data: relationsData, error: relationsError } =
+      await this.sb.client
+        .from('groupe_etudiants')
+        .select('groupe_id, etudiant_id');
+
+    if (relationsError) throw relationsError;
+
+    const groupesAvecCompte: Groupe[] = (groupesData ?? []).map(
+      (g: any) => ({
+        id: g.id,
+        nom: g.nom,
+        couleur: g.couleur,
+        programme_id: g.programme_id,
+        etudiants: (relationsData ?? []).filter(
+          (r: any) => r.groupe_id === g.id
+        ).length
+      })
+    );
+
+    this.groupes.set(groupesAvecCompte);
+
+    console.log('Programmes reçus:', programmesData?.length ?? 0);
+    console.log('Groupes reçus:', groupesAvecCompte.length);
+    console.log('Étudiants reçus:', etudiantsData?.length ?? 0);
+
+    /* =====================================================
+       METTRE A JOUR LES GROUPES DU PROGRAMME SELECTIONNE
+    ===================================================== */
+
+    this.actualiserGroupesProgramme();
 
   } catch (err: any) {
-    console.error('Erreur chargement programmes:', err);
+    console.error('Erreur chargement données:', err);
 
     this.errorMsg.set(
-      err?.message || 'Erreur de chargement des programmes'
+      err?.message || 'Erreur de chargement des données'
     );
   } finally {
     this.loading.set(false);

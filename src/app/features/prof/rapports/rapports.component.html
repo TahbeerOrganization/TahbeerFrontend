@@ -1,3 +1,4 @@
+
 <div class="app-layout" dir="rtl">
 
   <!-- SIDEBAR -->
@@ -11,8 +12,8 @@
     <!-- HEADER -->
     <header class="page-header">
       <div>
-        <h1>📊 التقارير والإحصائيات</h1>
-        <p>متابعة أداء الطلاب والحفظ والحضور والتقييمات</p>
+        <h1>📊 تقرير الطالب</h1>
+        <p>متابعة الحفظ والحضور والتقييمات الخاصة بكل طالب</p>
       </div>
 
       <button
@@ -24,25 +25,6 @@
       </button>
     </header>
 
-    <!-- REPORT TABS -->
-    <div class="report-tabs">
-      <button
-        type="button"
-        class="report-tab"
-        [class.active]="activeReport() === 'general'"
-        (click)="switchReport('general')">
-        📊 التقرير العام
-      </button>
-
-      <button
-        type="button"
-        class="report-tab"
-        [class.active]="activeReport() === 'etudiant'"
-        (click)="switchReport('etudiant')">
-        👤 تقرير طالب
-      </button>
-    </div>
-
     <!-- LOADING -->
     @if (loading()) {
       <div class="loading-box">
@@ -51,380 +33,325 @@
       </div>
     } @else {
 
-      <!-- =========================================
-           GENERAL REPORT
-      ========================================== -->
-      @if (activeReport() === 'general') {
+      <!-- SELECT STUDENT -->
+      <section class="student-selector card">
+        <div>
+          <h2>👤 تقرير طالب</h2>
+          <p>اختر الطالب لعرض تقريره الكامل</p>
+        </div>
 
-        <!-- GROUP DISTRIBUTION -->
-        <section class="card">
-          <div class="card-header">
+        <select
+          [value]="selectedEtudiantId()"
+          (change)="selectEtudiant($any($event.target).value)">
+
+          <option value="">اختر الطالب</option>
+
+          @for (e of etudiants(); track e.id) {
+            <option [value]="e.id">{{ e.nom }}</option>
+          }
+        </select>
+      </section>
+
+      @if (!studentInfo()) {
+        <div class="empty-large">
+          <div>👨‍🎓</div>
+          <h3>اختر طالبًا</h3>
+          <p>سيظهر هنا التقرير الكامل للطالب</p>
+        </div>
+      } @else {
+
+        <!-- STUDENT PROFILE -->
+        <section class="student-profile card">
+          <div class="student-avatar">
+            {{ (studentInfo()?.nom || '?').charAt(0) }}
+          </div>
+
+          <div class="student-main-info">
+            <h2>{{ studentInfo()?.nom }}</h2>
+            <span>
+              تاريخ التسجيل:
+              {{ formatDate(studentInfo()?.created_at) }}
+            </span>
+          </div>
+
+          <div class="student-kpis">
             <div>
-              <h2>👥 توزيع الطلاب حسب المجموعات</h2>
-              <p>عدد الطلاب المسجلين في كل مجموعة</p>
+              <strong>{{ studentGroupes().length }}</strong>
+              <span>مجموعات</span>
+            </div>
+
+            <div>
+              <strong>{{ getStudentHifdTotal() }}</strong>
+              <span>سور مسجلة</span>
+            </div>
+
+            <div>
+              <strong>{{ getPresencePercent() }}%</strong>
+              <span>الحضور</span>
             </div>
           </div>
-          
         </section>
 
-        <!-- SURAH PROGRESSION -->
+        <!-- STUDENT GROUPS -->
         <section class="card">
           <div class="card-header">
             <div>
-              <h2>📖 تقدم حفظ السور</h2>
-              <p>السور التي بدأ الطلاب في حفظها</p>
+              <h2>👥 مجموعات الطالب</h2>
+              <p>المجموعات التي ينتمي إليها الطالب</p>
             </div>
           </div>
 
-          @if (progressionSourates().length === 0) {
-            <div class="empty">لا توجد بيانات حفظ بعد</div>
+          @if (studentGroupes().length === 0) {
+            <div class="empty">
+              الطالب غير مسجل في أي مجموعة
+            </div>
           } @else {
-            <div class="sourates-list">
-              @for (s of progressionSourates(); track s.id) {
-                <div class="sourate-row">
-                  <div class="sourate-name">
-                    <strong>{{ s.nom_arabe || s.nom }}</strong>
-                    <small>{{ s.nom }}</small>
-                  </div>
+            <div class="student-groups">
+              @for (g of studentGroupes(); track g.id) {
+                <div class="group-chip">
+                  <span
+                    class="dot"
+                    [style.background]="g.couleur">
+                  </span>
 
-                  <div class="sourate-progress">
-                    <div class="progress-track">
-                      <div
-                        class="progress-complete"
-                        [style.width]="getBarWidth(s.completees, s.total) + '%'">
-                      </div>
-                    </div>
-
-                    <div class="progress-info">
-                      <span class="complete">
-                        {{ s.completees }} مكتملة
-                      </span>
-
-                      @if (s.enCours > 0) {
-                        <span class="running">
-                          {{ s.enCours }} جارية
-                        </span>
-                      }
-                    </div>
+                  <div>
+                    <strong>{{ g.nom }}</strong>
                   </div>
                 </div>
               }
             </div>
           }
         </section>
-      }
 
-      <!-- =========================================
-           STUDENT REPORT
-      ========================================== -->
-      @if (activeReport() === 'etudiant') {
+        <!-- STUDENT CHARTS -->
+        <section class="charts-grid">
 
-        <!-- SELECT STUDENT -->
-        <section class="student-selector card">
-          <div>
-            <h2>👤 تقرير طالب</h2>
-            <p>اختر الطالب لعرض تقريره الكامل</p>
-          </div>
-
-          <select
-            [value]="selectedEtudiantId()"
-            (change)="selectEtudiant($any($event.target).value)">
-            <option value="">اختر الطالب</option>
-
-            @for (e of etudiants(); track e.id) {
-              <option [value]="e.id">{{ e.nom }}</option>
-            }
-          </select>
-        </section>
-
-        @if (!studentInfo()) {
-          <div class="empty-large">
-            <div>👨‍🎓</div>
-            <h3>اختر طالبًا</h3>
-            <p>سيظهر هنا التقرير الكامل للطالب</p>
-          </div>
-        } @else {
-
-          <!-- STUDENT PROFILE -->
-          <section class="student-profile card">
-            <div class="student-avatar">
-              {{ (studentInfo()?.nom || '?').charAt(0) }}
-            </div>
-
-            <div class="student-main-info">
-              <h2>{{ studentInfo()?.nom }}</h2>
-              <span>
-                تاريخ التسجيل:
-                {{ formatDate(studentInfo()?.created_at) }}
-              </span>
-            </div>
-
-            <div class="student-kpis">
-              <div>
-                <strong>{{ studentGroupes().length }}</strong>
-                <span>مجموعات</span>
-              </div>
-
-              <div>
-                <strong>{{ getStudentHifdTotal() }}</strong>
-                <span>سور مسجلة</span>
-              </div>
-
-              <div>
-                <strong>{{ getPresencePercent() }}%</strong>
-                <span>الحضور</span>
-              </div>
-            </div>
-          </section>
-
-          <!-- STUDENT GROUPS -->
-          <section class="card">
+          <!-- HIFD DONUT -->
+          <div class="card">
             <div class="card-header">
               <div>
-                <h2>👥 مجموعات الطالب</h2>
-                <p>المجموعات التي ينتمي إليها الطالب</p>
-              </div>
-            </div>
-
-            @if (studentGroupes().length === 0) {
-              <div class="empty">
-                الطالب غير مسجل في أي مجموعة
-              </div>
-            } @else {
-              <div class="student-groups">
-                @for (g of studentGroupes(); track g.id) {
-                  <div class="group-chip">
-                    <span
-                      class="dot"
-                      [style.background]="getGroupeColor(g.type)">
-                    </span>
-
-                    <div>
-                      <strong>{{ g.nom }}</strong>
-                      @if (g.type) {
-                        <small>{{ g.type }}</small>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-
-          <!-- STUDENT CHARTS -->
-          <section class="charts-grid">
-
-            <!-- HIFD DONUT: THREE COLORS -->
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2>📖 تقدم الحفظ</h2>
-                  <p>الآيات المكتملة والجارية والمتبقية</p>
-                </div>
-              </div>
-
-              
-@if (studentSuivis().length === 0) {
-  <div class="empty">لا توجد بيانات حفظ لهذا الطالب</div>
-} @else {
-  <div class="hifd-donut-wrap">
-    <div
-      class="hifd-donut"
-      [style.background]="getHifdDonutGradient()">
-
-      <div class="hifd-donut-center">
-        <strong>{{ getHifdAyatStats().percentAchieved }}%</strong>
-        <span>مكتمل</span>
-      </div>
-    </div>
-
-    <div class="hifd-donut-legend">
-      <div class="legend-item">
-        <i class="dot dot-green"></i>
-        <span>آيات محفوظة</span>
-        <strong>{{ getHifdAyatStats().achieved }}</strong>
-      </div>
-
-      <div class="legend-item">
-        <i class="dot dot-blue"></i>
-        <span>آيات جارية</span>
-        <strong>{{ getHifdAyatStats().enCours }}</strong>
-      </div>
-
-      <div class="legend-item">
-        <i class="dot dot-gray"></i>
-        <span>آيات متبقية</span>
-        <strong>{{ getHifdAyatStats().remaining }}</strong>
-      </div>
-    </div>
-  </div>
-
-  <div class="hifd-total">
-    مجموع السور المتابعة:
-    <strong>{{ getStudentHifdTotal() }}</strong>
-    <span>·</span>
-    مكتملة:
-    <strong>{{ getStudentHifdCompletees() }}</strong>
-  </div>
-}
-            </div>
-
-            <!-- PRESENCE CHART + DATE TABLE -->
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2>📅 حضور الطالب</h2>
-                </div>
-              </div>
-
-              @if (studentPresences().length === 0) {
-                <div class="empty">لا توجد بيانات للحضور</div>
-              } @else {
-
-                <!-- PRESENCE DATE TABLE -->
-                <div class="presence-table-wrap">
-                  <h3 class="mini-table-title">
-                    📋 سجل الحضور والغياب
-                  </h3>
-
-                  <table class="mini-table">
-                    <thead>
-                      <tr>
-                        <th>التاريخ</th>
-                        <th>الحالة</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      @for (p of getPresencesSorted(); track p.id) {
-                        <tr>
-                          <td>{{ formatDate(p.date) }}</td>
-                          <td>
-                            <span
-                              class="badge"
-                              [class.badge-green]="p.statut === 'حاضر'"
-                              [class.badge-red]="p.statut === 'غائب'"
-                              [class.badge-gray]="p.statut !== 'حاضر' && p.statut !== 'غائب'">
-                              {{ p.statut || 'غير محدد' }}
-                            </span>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
-            </div>
-          </section>
-
-          <!-- COMPLETE SURAH MAP -->
-          <section class="card">
-            <div class="card-header">
-              <div>
-                <h2>🗺️ خريطة الحفظ</h2>
-                <p>الخضراء مكتملة، الزرقاء جارية، والشفافة لم تبدأ</p>
-              </div>
-            </div>
-
-            <div class="sourate-map-legend">
-              <span>
-                <i class="legend-square completed-square"></i>
-                مكتملة
-              </span>
-
-              <span>
-                <i class="legend-square running-square"></i>
-                جارية / مراجعة
-              </span>
-
-              <span>
-                <i class="legend-square not-started-square"></i>
-                لم تبدأ
-              </span>
-            </div>
-
-            @if (allSourates().length === 0) {
-              <div class="empty">لا توجد سور لعرضها</div>
-            } @else {
-              <div class="sourate-map">
-                @for (s of allSourates(); track s.id) {
-                  <div
-                    class="sourate-chip"
-                    [class.chip-completed]="isSourateCompletee(s.id)"
-                    [class.chip-encours]="!isSourateCompletee(s.id) && isSourateEnCours(s.id)"
-                    [title]="s.nom">
-
-                    <span class="chip-number">{{ s.id }}</span>
-                    <span class="chip-name">{{ s.nom }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-
-          <!-- HIFD DETAILS TABLE -->
-          <section class="card">
-            <div class="card-header">
-              <div>
-                <h2>📚 تفاصيل الحفظ</h2>
-                <p>السور والآيات المسجلة للطالب</p>
+                <h2>📖 تقدم الحفظ</h2>
+                <p>الآيات المكتملة والجارية والمتبقية</p>
               </div>
             </div>
 
             @if (studentSuivis().length === 0) {
-              <div class="empty">لا توجد بيانات حفظ</div>
+              <div class="empty">
+                لا توجد بيانات حفظ لهذا الطالب
+              </div>
             } @else {
-              <div class="table-wrapper">
-                <table>
+              <div class="hifd-donut-wrap">
+                <div
+                  class="hifd-donut"
+                  [style.background]="getHifdDonutGradient()">
+
+                  <div class="hifd-donut-center">
+                    <strong>
+                      {{ getHifdAyatStats().percentAchieved }}%
+                    </strong>
+                    <span>مكتمل</span>
+                  </div>
+                </div>
+
+                <div class="hifd-donut-legend">
+                  <div class="legend-item">
+                    <i class="dot dot-green"></i>
+                    <span>آيات محفوظة</span>
+                    <strong>
+                      {{ getHifdAyatStats().achieved }}
+                    </strong>
+                  </div>
+
+                  <div class="legend-item">
+                    <i class="dot dot-blue"></i>
+                    <span>آيات جارية</span>
+                    <strong>
+                      {{ getHifdAyatStats().enCours }}
+                    </strong>
+                  </div>
+
+                  <div class="legend-item">
+                    <i class="dot dot-gray"></i>
+                    <span>آيات متبقية</span>
+                    <strong>
+                      {{ getHifdAyatStats().remaining }}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hifd-total">
+                مجموع السور المتابعة:
+                <strong>{{ getStudentHifdTotal() }}</strong>
+                <span>·</span>
+                مكتملة:
+                <strong>{{ getStudentHifdCompletees() }}</strong>
+              </div>
+            }
+          </div>
+
+          <!-- PRESENCE TABLE -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2>📅 حضور الطالب</h2>
+              </div>
+            </div>
+
+            @if (studentPresences().length === 0) {
+              <div class="empty">
+                لا توجد بيانات للحضور
+              </div>
+            } @else {
+              <div class="presence-table-wrap">
+                <h3 class="mini-table-title">
+                  📋 سجل الحضور والغياب
+                </h3>
+
+                <table class="mini-table">
                   <thead>
                     <tr>
-                      <th>السورة</th>
-                      <th>الآيات</th>
+                      <th>التاريخ</th>
                       <th>الحالة</th>
-                      <th>التقييم</th>
-                      <th>آخر تحديث</th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    @for (s of studentSuivis(); track s.id) {
+                    @for (p of getPresencesSorted(); track p.id) {
                       <tr>
+                        <td>{{ formatDate(p.date) }}</td>
                         <td>
-                          <strong>
-                            {{
-                              s.sourates?.nom_arabe ||
-                              s.sourates?.nom ||
-                              s.sourates ||
-                              '—'
-                            }}
-                          </strong>
-                        </td>
-
-                        <td>
-                          @if (s.ayat_debut && s.ayat_fin) {
-                            من {{ s.ayat_debut }} إلى {{ s.ayat_fin }}
-                          } @else {
-                            —
-                          }
-                        </td>
-
-                        <td>
-                          <span class="status-badge">
-                            {{ s.statut || '—' }}
+                          <span
+                            class="badge"
+                            [class.badge-green]="p.statut === 'حاضر'"
+                            [class.badge-red]="p.statut === 'غائب'"
+                            [class.badge-gray]="p.statut !== 'حاضر' && p.statut !== 'غائب'">
+                            {{ p.statut || 'غير محدد' }}
                           </span>
                         </td>
-
-                        <td>{{ s.evaluation || '—' }}</td>
-                        <td>{{ formatDate(s.updated_at) }}</td>
                       </tr>
                     }
                   </tbody>
                 </table>
               </div>
             }
-          </section>
-        }
+          </div>
+
+        </section>
+
+        <!-- COMPLETE SURAH MAP -->
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h2>🗺️ خريطة الحفظ</h2>
+              <p>الخضراء مكتملة، الزرقاء جارية، والشفافة لم تبدأ</p>
+            </div>
+          </div>
+
+          <div class="sourate-map-legend">
+            <span>
+              <i class="legend-square completed-square"></i>
+              مكتملة
+            </span>
+
+            <span>
+              <i class="legend-square running-square"></i>
+              جارية / مراجعة
+            </span>
+
+            <span>
+              <i class="legend-square not-started-square"></i>
+              لم تبدأ
+            </span>
+          </div>
+
+          @if (allSourates().length === 0) {
+            <div class="empty">
+              لا توجد سور لعرضها
+            </div>
+          } @else {
+            <div class="sourate-map">
+              @for (s of allSourates(); track s.id) {
+                <div
+                  class="sourate-chip"
+                  [class.chip-completed]="isSourateCompletee(s.id)"
+                  [class.chip-encours]="!isSourateCompletee(s.id) && isSourateEnCours(s.id)"
+                  [title]="s.nom">
+
+                  <span class="chip-number">{{ s.id }}</span>
+                  <span class="chip-name">{{ s.nom }}</span>
+                </div>
+              }
+            </div>
+          }
+        </section>
+
+        <!-- HIFD DETAILS TABLE -->
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h2>📚 تفاصيل الحفظ</h2>
+              <p>السور والآيات المسجلة للطالب</p>
+            </div>
+          </div>
+
+          @if (studentSuivis().length === 0) {
+            <div class="empty">
+              لا توجد بيانات حفظ
+            </div>
+          } @else {
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>السورة</th>
+                    <th>الآيات</th>
+                    <th>الحالة</th>
+                    <th>التقييم</th>
+                    <th>آخر تحديث</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  @for (s of studentSuivis(); track s.id) {
+                    <tr>
+                      <td>
+                        <strong>
+                          {{
+                            s.sourates?.nom_arabe ||
+                            s.sourates?.nom ||
+                            s.sourates ||
+                            '—'
+                          }}
+                        </strong>
+                      </td>
+
+                      <td>
+                        @if (s.ayat_debut && s.ayat_fin) {
+                          من {{ s.ayat_debut }} إلى {{ s.ayat_fin }}
+                        } @else {
+                          —
+                        }
+                      </td>
+
+                      <td>
+                        <span class="status-badge">
+                          {{ s.statut || '—' }}
+                        </span>
+                      </td>
+
+                      <td>{{ s.evaluation || '—' }}</td>
+                      <td>{{ formatDate(s.updated_at) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+
       }
     }
+
   </main>
 </div>
