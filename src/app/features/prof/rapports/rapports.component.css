@@ -72,26 +72,34 @@ button {
 ========================================================= */
 
 .page-header {
+  background: #fff;
+  border-bottom: 0.5px solid #e0ded8;
+
+  padding: 0 24px;
+  height: 56px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 22px;
+
+  flex-shrink: 0;
+
+  margin: -24px -24px 22px -24px;  /* يلغي البادينغ ديال main-content باش يوصل للحواف */
 }
 
 .page-header h1 {
   margin: 0;
-  color: #17212b;
-  font-size: 23px;
-  font-weight: 800;
-  line-height: 1.6;
+  color: #1a1a1a;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .page-header p {
-  margin: 5px 0 0;
-  color: #87919a;
-  font-size: 13px;
-  line-height: 1.8;
+  margin: 2px 0 0;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .btn-refresh {
@@ -1321,6 +1329,33 @@ select:focus-visible {
     min-height: 230px;
     padding: 35px 15px;
   }
+}
+
+.groupes-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.groupe-dist-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 70px;
+  align-items: center;
+  gap: 12px;
+}
+
+.groupe-dist-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.groupe-dist-count {
+  font-size: 12px;
+  color: #666;
+  text-align: left;
 }
 
 /* =========================================================

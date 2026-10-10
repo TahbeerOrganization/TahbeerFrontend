@@ -85,13 +85,12 @@ export class RapportsComponent implements OnInit {
 
   loading = signal(false);
 
-  activeReport = signal<'general' | 'etudiant'>('general');
-
+  activeReport = signal<'etudiant'>('etudiant');
   etudiants = signal<Etudiant[]>([]);
   groupes = signal<any[]>([]);
 
   allSourates = signal<Sourate[]>([]);
-
+  allSuivis = signal<Suivi[]>([]);
   studentSuivis = signal<Suivi[]>([]);
   studentPresences = signal<Presence[]>([]);
   studentGroupes = signal<any[]>([]);
@@ -115,76 +114,34 @@ export class RapportsComponent implements OnInit {
   ===================================================== */
 
   async ngOnInit(): Promise<void> {
-    await this.loadAllSourates();
-    await this.loadGeneralReport();
+  await this.loadAllSourates();
+  await this.loadEtudiants();   // زيدو method صغيرة تجيب غير الطلاب (بلا groupes/evaluations العامة)
 
-    this.route.queryParams.subscribe(params => {
-      const id = params['etudiant'];
-
-      if (id) {
-        this.selectEtudiant(String(id));
-      }
-    });
-  }
+  this.route.queryParams.subscribe(params => {
+    const id = params['etudiant'];
+    if (id) this.selectEtudiant(String(id));
+  });
+}
 
   /* =====================================================
      CHARGEMENT DES DONNEES GENERALES
   ===================================================== */
 
-  async loadGeneralReport(): Promise<void> {
-    this.loading.set(true);
+  async loadEtudiants(): Promise<void> {
+  const { data, error } = await this.sb.client
+    .from('profiles')
+    .select('id, nom, created_at')
+    .eq('role', 'etudiant')
+    .order('nom');
 
-    try {
-      const { data: students, error: studentsError } =
-        await this.sb.client
-          .from('profiles')
-          .select('id, nom, groupe_id, created_at')
-          .eq('role', 'etudiant')
-          .order('nom');
-
-      if (studentsError) {
-        console.error('ETUDIANTS:', studentsError);
-        this.etudiants.set([]);
-      } else {
-        this.etudiants.set(
-          (students || []).map((e: any) => ({
-            id: String(e.id),
-            nom: e.nom || '',
-            groupe_id: e.groupe_id,
-            created_at: e.created_at || ''
-          }))
-        );
-      }
-
-      const { data: groupes, error: groupesError } =
-        await this.sb.client
-          .from('groupes')
-          .select('*')
-          .order('nom');
-
-      if (groupesError) {
-        console.error('GROUPES:', groupesError);
-        this.groupes.set([]);
-      } else {
-        const liste = (groupes || []).map((g: any) => {
-          const nb = this.etudiants().filter(
-            e => Number(e.groupe_id) === Number(g.id)
-          ).length;
-
-          return {
-            ...g,
-            nbEtudiants: nb
-          };
-        });
-
-        this.groupes.set(liste);
-      }
-    } catch (error) {
-      console.error('LOAD GENERAL REPORT:', error);
-    } finally {
-      this.loading.set(false);
-    }
+  if (error) {
+    console.error('ETUDIANTS:', error);
+    this.etudiants.set([]);
+    return;
   }
+
+  this.etudiants.set(data || []);
+}
 
   /* =====================================================
      CHARGEMENT DE TOUTES LES SOURATES
@@ -321,22 +278,39 @@ async loadStudentSuivis(id: string): Promise<void> {
      GROUPES DE L'ETUDIANT
   ===================================================== */
 
-  async loadStudentGroupes(id: string): Promise<void> {
-    const student = this.etudiants().find(
-      e => String(e.id) === String(id)
-    );
+  /* =====================================================
+   GROUPES DE L'ETUDIANT (via table groupe_etudiants)
+===================================================== */
 
-    if (!student?.groupe_id) {
-      this.studentGroupes.set([]);
-      return;
-    }
+async loadStudentGroupes(id: string): Promise<void> {
 
-    const groupe = this.groupes().find(
-      g => Number(g.id) === Number(student.groupe_id)
-    );
+  const { data, error } = await this.sb.client
+    .from('groupe_etudiants')
+    .select(`
+      groupe_id,
+      groupes (
+        id,
+        nom,
+        couleur,
+        programme_id
+      )
+    `)
+    .eq('etudiant_id', id);
 
-    this.studentGroupes.set(groupe ? [groupe] : []);
+  if (error) {
+    console.error('STUDENT GROUPES:', error);
+    this.studentGroupes.set([]);
+    return;
   }
+
+  const groupes = (data || [])
+    .map((row: any) =>
+      Array.isArray(row.groupes) ? row.groupes[0] : row.groupes
+    )
+    .filter((g: any) => g != null);
+
+  this.studentGroupes.set(groupes);
+}
 
   /* =====================================================
      RAFRAICHISSEMENT
@@ -344,7 +318,7 @@ async loadStudentSuivis(id: string): Promise<void> {
 
   async refresh(): Promise<void> {
     await this.loadAllSourates();
-    await this.loadGeneralReport();
+    await this.loadEtudiants();
 
     const id = this.selectedEtudiantId();
 
@@ -353,9 +327,7 @@ async loadStudentSuivis(id: string): Promise<void> {
     }
   }
 
-  switchReport(report: 'general' | 'etudiant'): void {
-    this.activeReport.set(report);
-  }
+  
 
   /* =====================================================
      DATES
@@ -649,30 +621,42 @@ private normalizeStatus(value: string | null | undefined): string {
   ===================================================== */
 
   progressionSourates(): SourateProgression[] {
-    const suivis = this.studentSuivis();
-    const sourates = this.allSourates();
 
-    return sourates
-      .map(s => {
-        const liste = suivis.filter(
-          suivi => suivi.sourate_id === s.id
-        );
+  const suivis = this.allSuivis();
+  const sourates = this.allSourates();
 
-        return {
-          id: s.id,
-          nom: s.nom,
-          nom_arabe: s.nom_arabe,
-          total: liste.length,
-          completees: liste.filter(
-            h => h.statut === 'مكتمل'
-          ).length,
-          enCours: liste.filter(
-            h =>
-              h.statut === 'جاري' ||
-              h.statut === 'مراجعة'
-          ).length
-        };
-      })
-      .filter(s => s.total > 0);
-  }
+  return sourates
+    .map(s => {
+
+      const liste = suivis.filter(
+        suivi => suivi.sourate_id === s.id
+      );
+
+      // آخر statut لكل طالب فقط (بلا تكرار)
+      const parEtudiant = new Map<string, any>();
+
+      liste.forEach(l => {
+        const existing = parEtudiant.get(l.etudiant_id);
+        if (
+          !existing ||
+          new Date(l.updated_at) > new Date(existing.updated_at)
+        ) {
+          parEtudiant.set(l.etudiant_id, l);
+        }
+      });
+
+      const uniques = Array.from(parEtudiant.values());
+
+      return {
+        id: s.id,
+        nom: s.nom,
+        total: uniques.length,
+        completees: uniques.filter(h => h.statut === 'مكتمل').length,
+        enCours: uniques.filter(
+          h => h.statut === 'جاري' || h.statut === 'مراجعة'
+        ).length
+      };
+    })
+    .filter(s => s.total > 0);
+}
 }
